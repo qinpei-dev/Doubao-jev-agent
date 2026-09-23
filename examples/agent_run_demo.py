@@ -1,4 +1,4 @@
-"""Run a complete JEV decision and local skill execution."""
+"""Run the workflow in mock mode without a key, or real mode with your own key."""
 
 import asyncio
 

@@ -1,4 +1,4 @@
-"""Run an agent-routing decision through TypeSafe JEV or the no-key mock."""
+"""Use your own JEV_API_KEY for real mode; without it, use the mock."""
 
 import asyncio
 

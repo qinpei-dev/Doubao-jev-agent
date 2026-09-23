@@ -7,7 +7,9 @@ from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
+from src.jev.client import JEVClient
 from src.jev.mock import MockJEVClient
+from src.jev.typesafe import TypeSafeJEVClient
 from src.mcp.tools import create_mcp_server
 
 
@@ -65,3 +67,18 @@ def test_mcp_server_process_starts():
     finally:
         process.terminate()
         process.wait(timeout=5)
+
+
+def test_no_key_selects_mock_without_calling_real_api(monkeypatch):
+    monkeypatch.setattr("src.jev.client.load_dotenv", lambda: None)
+    monkeypatch.delenv("JEV_API_KEY", raising=False)
+    assert isinstance(JEVClient.from_env(), MockJEVClient)
+
+
+def test_own_environment_key_selects_direct_typesafe_client(monkeypatch):
+    monkeypatch.setattr("src.jev.client.load_dotenv", lambda: None)
+    monkeypatch.setenv("JEV_API_KEY", "user_test_key")
+    client = JEVClient.from_env()
+    assert isinstance(client, TypeSafeJEVClient)
+    assert client.api_key == "user_test_key"
+    assert client.endpoint == "https://api.typesafe.ai/v1/systemone"

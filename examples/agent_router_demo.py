@@ -1,3 +1,5 @@
+"""Demonstrate mock agent routing without a JEV API key."""
+
 import asyncio
 from src.core.decision import DecisionEngine
 from src.core.router import AgentRouter

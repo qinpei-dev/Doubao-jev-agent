@@ -89,7 +89,9 @@ python -m examples.agent_router_demo
 python -m examples.agent_run_demo
 ```
 
-The demos cover paper skill routing, career skill routing, GitHub issue to coding-agent routing, and the complete JEV decision-to-skill-execution flow.
+**Mock mode (no API key):** `skill_router_demo`, `doubao_demo`, and `agent_router_demo` always use the local mock. `agent_run_demo` also uses the mock when `JEV_API_KEY` is unset.
+
+**Real mode (your own API key required):** `agent_run_demo` and `real_jev_demo` call TypeSafe JEV when your local `JEV_API_KEY` is set. `real_jev_demo` falls back to the mock when the key is unset. No demo uses a bundled key or project-provided JEV quota.
 
 ## API
 
@@ -101,29 +103,31 @@ The demos cover paper skill routing, career skill routing, GitHub issue to codin
 
 ## MCP Integration
 
-The [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is an open standard that lets AI applications connect to external tools through a consistent interface. Doubao JEV Agent exposes its decision engine and skill workflow as MCP tools, so compatible hosts such as Claude Desktop and Cursor can call them.
+The [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is an open standard that lets AI applications connect to external tools through a consistent interface. Doubao JEV Agent exposes its decision engine and skill workflow as MCP tools, so compatible hosts such as Claude Desktop and Cursor can call them. Each user runs this MCP server locally; this project does not provide a shared remote MCP service.
 
 ```mermaid
 flowchart LR
-    A[Claude / Cursor / other MCP host] --> M[MCP over stdio]
-    M --> J[Doubao JEV Decision Layer]
+    A[Doubao / Claude / Cursor] --> M[User's local MCP server]
+    M --> K[User's own JEV API key]
+    K --> J[TypeSafe JEV API]
     J --> R[Skill Router / Executor]
 ```
 
-Install the project dependencies, then copy `mcp.json.example` into your MCP host configuration. Run the command from the repository root, or set the host configuration's working directory to the repository root so Python can import `src`.
+Install the project dependencies, then copy `mcp.json.example` into your local MCP host configuration. Run the command from the repository root, or set the host configuration's working directory to the repository root so Python can import `src`. The example's empty `env` map contains no credentials; the server reads `JEV_API_KEY` from its local process environment or local `.env` file.
 
 ```json
 {
   "mcpServers": {
     "doubao-jev-agent": {
       "command": "python",
-      "args": ["-m", "src.mcp.server"]
+      "args": ["-m", "src.mcp.server"],
+      "env": {}
     }
   }
 }
 ```
 
-Start the server manually with `python -m src.mcp.server`. It uses stdio transport and selects the mock JEV client by default; set `JEV_API_KEY` to use the real TypeSafe JEV API.
+Start the server manually with `python -m src.mcp.server`. It uses stdio transport and selects the mock JEV client when no key is configured. For real decisions, set your own `JEV_API_KEY` in the local server process environment. If your MCP host does not pass shell environment variables to child processes, configure the key through that host's local per-server environment settings and keep the configuration private.
 
 | Tool | Description |
 | --- | --- |
@@ -137,7 +141,19 @@ Start the server manually with `python -m src.mcp.server`. It uses stdio transpo
 docker compose up --build
 ```
 
-The API is then available at `http://localhost:8000`. Mock mode is the default and requires no API key.
+The API is then available at `http://localhost:8000`. Docker Compose binds the port to `127.0.0.1` on the host. Mock mode is the default and requires no API key.
+
+## API Key and Usage Model
+
+This open-source project provides no JEV API quota or shared author account. To call the real JEV API, each user needs their **own** TypeSafe JEV API key and runs their **own local** MCP server. Calls made with that key use the user's JEV account and quota.
+
+Set the key in the local server process environment or in a private, untracked `.env` file:
+
+```dotenv
+JEV_API_KEY=your_own_key
+```
+
+Without a key, the server uses the deterministic mock and makes no JEV API request. With a key, the client sends requests directly to `https://api.typesafe.ai/v1/systemone` over HTTPS using that key. The author does not operate an intermediate service for these calls.
 
 ## Configure JEV API Key
 
@@ -147,7 +163,7 @@ To run the real JEV demo with TypeSafe:
 2. Set `JEV_API_KEY` in `.env` to your real JEV API key:
 
    ```dotenv
-   JEV_API_KEY=your_real_jev_api_key
+   JEV_API_KEY=your_own_key
    ```
 
 3. Run the real demo from the project root:
@@ -162,14 +178,14 @@ The demo uses the real TypeSafe JEV API when `JEV_API_KEY` is set. If it is empt
 
 Request a TypeSafe JEV API key through the [TypeSafe website](https://typesafe.ai/) and create a key in the console when your account has access. The client calls `POST https://api.typesafe.ai/v1/systemone` using Bearer authentication and a typed `choice` question. TypeSafe returns the choice, confidence, and probabilities; this project formats those fields into its `decision`, `confidence`, and `reason` result.
 
-The key is loaded from `.env` by `JEVClient.from_env()` and is never stored in source. For a shell session, you can also export it directly:
+The key is loaded from the local process environment or `.env` by `JEVClient.from_env()` and is never stored in source. For a shell session, you can also export your own key directly:
 
 ```bash
 # macOS / Linux
-export JEV_API_KEY="your_key_here"
+export JEV_API_KEY="your_own_key"
 
 # PowerShell
-$env:JEV_API_KEY = "your_key_here"
+$env:JEV_API_KEY = "your_own_key"
 ```
 
 Run the demo from the repository root:
@@ -182,10 +198,17 @@ It sends `帮我分析这个招聘岗位` with `career_agent`, `coding_agent`, a
 
 API flow: the demo creates the shared `JEVClient` via `JEVClient.from_env()`, which selects TypeSafe when `JEV_API_KEY` is set or `MockJEVClient` otherwise. The TypeSafe client sends the task as `state`, asks one constrained choice question, validates the returned option, and adapts the typed answer to the existing `DecisionResult` model.
 
+## Security
+
+- Do not commit `.env` or put a real key in `mcp.json.example`, source code, or documentation. `.env` is ignored by Git.
+- Use your own JEV API key. The project has no shared quota or author-provided credentials.
+- The key is stored locally and sent only from your server directly to TypeSafe JEV over HTTPS for real requests. Keep any MCP host configuration containing a key private.
+- The HTTP API has no authentication. Keep it bound to localhost when using a real key; the included Docker Compose configuration does this by default.
+
 ## Tests
 
 ```bash
-pytest
+python -m pytest
 ```
 
 ## Roadmap
