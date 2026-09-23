@@ -99,6 +99,38 @@ The demos cover paper skill routing, career skill routing, GitHub issue to codin
 - `POST /route/agent` — route a task to an agent
 - `POST /api/v1/agent/run` — decide a skill and execute it
 
+## MCP Integration
+
+The [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is an open standard that lets AI applications connect to external tools through a consistent interface. Doubao JEV Agent exposes its decision engine and skill workflow as MCP tools, so compatible hosts such as Claude Desktop and Cursor can call them.
+
+```mermaid
+flowchart LR
+    A[Claude / Cursor / other MCP host] --> M[MCP over stdio]
+    M --> J[Doubao JEV Decision Layer]
+    J --> R[Skill Router / Executor]
+```
+
+Install the project dependencies, then copy `mcp.json.example` into your MCP host configuration. Run the command from the repository root, or set the host configuration's working directory to the repository root so Python can import `src`.
+
+```json
+{
+  "mcpServers": {
+    "doubao-jev-agent": {
+      "command": "python",
+      "args": ["-m", "src.mcp.server"]
+    }
+  }
+}
+```
+
+Start the server manually with `python -m src.mcp.server`. It uses stdio transport and selects the mock JEV client by default; set `JEV_API_KEY` to use the real TypeSafe JEV API.
+
+| Tool | Description |
+| --- | --- |
+| `jev_decide` | Make a decision with JEV from a task and allowed options |
+| `agent_run` | Decide a skill, execute it, and return the workflow result |
+| `list_skills` | List available skills |
+
 ## Docker
 
 ```bash
@@ -166,7 +198,6 @@ pytest
 - FastAPI service and Docker packaging
 
 ### Future
-- MCP support
 - More Doubao Agent integrations
 - Multi-agent workflows
 
