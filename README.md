@@ -76,11 +76,30 @@ docker compose up --build
 
 The API is then available at `http://localhost:8000`. Mock mode is the default and requires no API key.
 
+## Configure JEV API Key
+
+To run the real JEV demo with TypeSafe:
+
+1. In the project root, create a file named `.env` (or copy `.env.example` to `.env`).
+2. Set `JEV_API_KEY` in `.env` to your real JEV API key:
+
+   ```dotenv
+   JEV_API_KEY=your_real_jev_api_key
+   ```
+
+3. Run the real demo from the project root:
+
+   ```bash
+   python -m examples.real_jev_demo
+   ```
+
+The demo uses the real TypeSafe JEV API when `JEV_API_KEY` is set. If it is empty or missing, the client uses the mock instead.
+
 ## Real JEV API Integration
 
 Request a TypeSafe JEV API key through the [TypeSafe website](https://typesafe.ai/) and create a key in the console when your account has access. The client calls `POST https://api.typesafe.ai/v1/systemone` using Bearer authentication and a typed `choice` question. TypeSafe returns the choice, confidence, and probabilities; this project formats those fields into its `decision`, `confidence`, and `reason` result.
 
-Copy `.env.example` to `.env` and set `JEV_API_KEY` to your key. The key is read from the process environment and is never stored in source. For a shell session, you can export it directly:
+The key is loaded from `.env` by `JEVClient.from_env()` and is never stored in source. For a shell session, you can also export it directly:
 
 ```bash
 # macOS / Linux
