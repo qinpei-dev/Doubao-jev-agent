@@ -26,3 +26,22 @@ class AgentRouteResult(BaseModel):
     agent: str
     confidence: float
     reason: str
+
+
+class AgentRunRequest(BaseModel):
+    task: str = Field(min_length=1)
+
+
+class AgentRunDecision(BaseModel):
+    skill: str
+    confidence: float = Field(ge=0, le=1)
+
+
+class AgentRunExecution(BaseModel):
+    status: str
+    result: str
+
+
+class AgentRunResult(BaseModel):
+    decision: AgentRunDecision
+    execution: AgentRunExecution

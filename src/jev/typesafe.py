@@ -24,7 +24,7 @@ class TypeSafeJEVClient(JEVClient):
             "questions": {
                 "agent": {
                     "type": "choice",
-                    "instructions": "Choose the agent best suited to handle the user's task.",
+                    "instructions": "Choose the skill or agent best suited to handle the user's task.",
                     "criteria": {option: option for option in request.options},
                 }
             },

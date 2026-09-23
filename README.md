@@ -1,10 +1,10 @@
 # Doubao JEV Agent
 
-**A decision layer for Doubao Agent powered by JEV.**
+**A lightweight decision and action layer for Doubao Agent powered by JEV.**
 
 > **LLM generates. JEV decides.**
 
-Doubao JEV Agent is a small, extensible decision layer that routes a natural-language task to a Skill or Agent. v0.1 ships with a deterministic mock JEV engine, a provider-neutral Doubao adapter contract, and a FastAPI service. It does not call Doubao or a hosted JEV service.
+Doubao JEV Agent is a small, extensible service that routes natural-language tasks to a Skill or Agent and can execute registered local Skills. It includes a deterministic mock JEV engine, a real TypeSafe JEV client, a provider-neutral Doubao adapter contract, and a FastAPI service. Skills currently demonstrate simulated local execution without external services.
 
 ## Why a decision layer?
 
@@ -19,6 +19,35 @@ flowchart TD
     J --> E[JEV Decision Layer]
     E --> R[Skill / Agent Router]
     R --> T[Tools / Agents]
+```
+
+## Decision + Action Architecture
+
+```mermaid
+flowchart TD
+    U[User] --> J[JEV Decision Layer]
+    J --> R[Skill Router]
+    R --> E[Skill Executor]
+    E --> O[Result]
+```
+
+The `/api/v1/agent/run` endpoint sends the task to JEV with the registered skill names as allowed choices, then executes the selected skill locally and returns both the decision and execution result. The built-in career, paper, coding, and writing skills are simulation workflows and do not call external services.
+
+Example request:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/agent/run \
+  -H 'Content-Type: application/json' \
+  -d '{"task":"帮我分析这个招聘岗位"}'
+```
+
+Example response:
+
+```json
+{
+  "decision": {"skill": "career_skill", "confidence": 0.95},
+  "execution": {"status": "completed", "result": "Career analysis workflow executed"}
+}
 ```
 
 The JEV boundary is asynchronous and replaceable. Without `JEV_API_KEY`, the application uses its deterministic mock. When a key is present, it calls TypeSafe's hosted System One API and validates that the returned choice is among the requested options.
@@ -57,9 +86,10 @@ Run from the project root:
 python -m examples.skill_router_demo
 python -m examples.doubao_demo
 python -m examples.agent_router_demo
+python -m examples.agent_run_demo
 ```
 
-The demos cover paper skill routing, career skill routing, and GitHub issue to coding-agent routing. Each prints the task, selected destination, confidence, and reason for easy terminal screenshots.
+The demos cover paper skill routing, career skill routing, GitHub issue to coding-agent routing, and the complete JEV decision-to-skill-execution flow.
 
 ## API
 
@@ -67,6 +97,7 @@ The demos cover paper skill routing, career skill routing, and GitHub issue to c
 - `POST /decide` — choose among caller-provided options (`task`, `options`)
 - `POST /route/skill` — route a task to a built-in skill
 - `POST /route/agent` — route a task to an agent
+- `POST /api/v1/agent/run` — decide a skill and execute it
 
 ## Docker
 
