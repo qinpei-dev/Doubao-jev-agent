@@ -1,0 +1,1 @@
+"""Doubao ecosystem adapter contracts."""
