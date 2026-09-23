@@ -1,18 +1,21 @@
 # Doubao-JEV-Agent
 
-**A JEV-powered decision layer for MCP-compatible AI Agents.**
+**A JEV-powered decision layer exposed through MCP for MCP-compatible AI Agents.**
 
-Doubao-JEV-Agent provides a decision layer and MCP interface for AI Agents. It is not a complete autonomous agent; the MCP client supplies the task and allowed choices.
+This project provides a lightweight decision layer between AI clients and execution workflows.
 
-> **LLMs generate. JEV decides.**
+Originally built for Doubao MCP integration, now supports MCP-compatible clients.
 
-Doubao-JEV-Agent is an open-source Python project that exposes JEV decisions and local skill workflows as MCP tools. An MCP-compatible host sends a task to the server; JEV selects from the allowed options; the Skill Executor runs the selected local skill and returns its result.
+Doubao-JEV-Agent is an MCP Server for Agent clients and Agent workflows. An MCP-compatible AI Agent supplies a task and allowed choices; JEV selects from those options, and the local executor runs the selected skill. The client remains responsible for the wider Agent workflow.
 
 ## Demo
 
 ![Doubao MCP demo showing the jev_decide tool call and decision result](docs/images/doubao-mcp-demo.png)
 
-Tested with Doubao Desktop MCP Connector.
+Tested MCP Clients:
+
+- Doubao Desktop MCP Connector
+- Antigravity MCP Client
 
 Real MCP call → Real TypeSafe JEV API → Decision result.
 
@@ -42,25 +45,51 @@ No API key is needed for this demo. With `JEV_API_KEY` set, it calls the real Ty
 
 The included career, paper, coding, research, and writing skills are simulated workflows. They demonstrate routing and execution; they do not call external services or perform the described work themselves. The Doubao adapter is an extension contract, not a live Doubao API integration.
 
-## Why JEV Decision Layer?
+## Why Decision Layer?
 
-In many agents, the LLM also decides which action to take next. That can make tool selection inconsistent, agent paths harder to control, and unnecessary calls harder to avoid. This project puts decision, routing, and skill selection in a separate decision layer. The MCP client supplies allowed choices; JEV returns a choice that is checked against those options before the selected local skill runs. This provides an explicit place to inspect and constrain action selection, without claiming that every decision is optimal or that it eliminates unnecessary calls. See [Use Cases](docs/use-cases.md) for the workflow and its limits.
+Modern AI Agents often rely on LLMs for both generation and decision making. This project separates decision making into a dedicated, lightweight decision layer for structured decisions and predictable routing.
+
+Without Decision Layer:
+
+```text
+Task
+  ↓
+LLM decides
+  ↓
+Execution
+```
+
+With JEV:
+
+```text
+Task
+  ↓
+JEV Decision Layer
+  ↓
+Skill Routing
+  ↓
+Execution
+```
+
+The MCP client provides the task and allowed choices. JEV returns a choice that is checked against those options before routing. LLMs can still generate content and manage the wider Agent workflow. See [Decision Routing Examples](docs/use-cases.md) for examples and limits.
 
 ## Architecture
 
-```mermaid
-flowchart TD
-    A[AI Agent / MCP Client]
-    B[MCP Server]
-    C[JEV Decision Layer]
-    D[Skill Router]
-    E[Skill Execution]
-
-    A --> B
-    B --> C
-    C --> D
-    D --> E
+```text
+AI Client / Agent
+        ↓
+MCP Protocol
+        ↓
+Doubao-JEV-Agent MCP Server
+        ↓
+JEV Decision Layer
+        ↓
+Skill Router
+        ↓
+Execution Layer
 ```
+
+MCP handles communication. JEV makes a structured decision from the client's allowed choices. The Skill Router selects the registered skill, and the executor runs its local workflow.
 
 ## Quick Start
 
@@ -92,7 +121,9 @@ uvicorn src.main:app --reload
 
 Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) for interactive API documentation. The service starts in mock mode unless a JEV key is configured.
 
-## MCP Integration
+## MCP
+
+MCP (Model Context Protocol) provides a standard way for AI clients to connect with external tools and services. This MCP server exposes `jev_decide`, `agent_run`, and `list_skills`.
 
 Install the dependencies, then add the following server entry to your MCP host configuration. Start the host with the repository root as its working directory so Python can import `src`.
 
@@ -148,15 +179,15 @@ python -m examples.real_jev_demo
 
 The demos use the local mock by default. `agent_run_demo` and `real_jev_demo` use TypeSafe JEV when `JEV_API_KEY` is set. No demo includes a bundled API key or project-provided quota.
 
-## Use Cases
+## Decision Routing Examples
 
-Each example shows **Task → JEV → Decision** using the environment-selected JEV client. With no `JEV_API_KEY`, the local mock provides a deterministic demonstration; with a key, the choice comes from the real TypeSafe JEV API and may differ. Run from the repository root:
+The routing flow is **Task → JEV Decision → Selected Skill → Execution Path**. These examples show the decision step using the environment-selected JEV client; they stop at the choice rather than executing a skill. With no `JEV_API_KEY`, the local mock provides a deterministic demonstration; with a key, the choice comes from the real TypeSafe JEV API and may differ. Run from the repository root:
 
 - [Agent Routing](examples/use_cases/career_decision.py): `python -m examples.use_cases.career_decision`
 - [Coding Decision](examples/use_cases/coding_decision.py): `python -m examples.use_cases.coding_decision`
 - [Research Decision](examples/use_cases/tool_selection.py): `python -m examples.use_cases.tool_selection`
 
-For the reasoning behind these examples, read [Use Cases](docs/use-cases.md).
+For the reasoning behind these examples, read [Decision Routing Examples](docs/use-cases.md).
 
 ### HTTP API example
 
@@ -178,7 +209,7 @@ In mock mode, the response contains the selected skill and execution result. The
 | `POST` | `/route/agent` | Route a task to an agent. |
 | `POST` | `/api/v1/agent/run` | Decide a skill and execute its workflow. |
 
-## Benchmark
+## Decision Routing Evaluation
 
 See the [Decision Routing Evaluation](benchmark/results.md). Run `python benchmark/run_benchmark.py` to regenerate it locally. The 10 example tasks test the decision routing flow, example task matching, confidence, and local demo execution for career, coding, research, and writing skills. The decision backend is a deterministic local mock; its latency does not represent real API latency or LLM generation speed. The evaluation makes no performance or cost claim. No paid model or external research service is called.
 

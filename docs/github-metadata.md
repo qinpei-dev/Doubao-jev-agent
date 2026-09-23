@@ -6,7 +6,7 @@ Recommended repository Topics:
 - `mcp`
 - `model-context-protocol`
 - `llm`
-- `agent-framework`
+- `decision-routing`
 - `python`
 - `jev`
 - `doubao`

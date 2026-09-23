@@ -1,32 +1,32 @@
-# Use Cases
+# Decision Routing Examples
 
 ## Why Decision Layer?
 
-A traditional Agent may ask an LLM to choose every next action:
+An Agent client may ask an LLM to choose the next action:
 
 ```text
-User Task
+Task
     ↓
-LLM decides everything
+LLM decides
     ↓
-Tool execution
+Execution
 ```
 
-Depending on the workflow, this can lead to unstable tool selection, unnecessary model calls, and higher execution cost.
+This project offers a separate, lightweight decision layer for structured decisions and predictable routing.
 
 With JEV, the MCP client supplies a task and allowed choices to a separate decision layer:
 
 ```text
-User Task
+Task
     ↓
-JEV Decision
+JEV Decision Layer
     ↓
 Skill Routing
     ↓
 Execution
 ```
 
-JEV returns a structured choice from the supplied options. The client can use that choice to route a workflow, making action selection easier to inspect and potentially more predictable. A smaller decision step may reduce routing cost in suitable workflows, but cost savings and decision quality depend on the task, model calls, and deployment. An AI Agent remains responsible for the wider workflow.
+JEV returns a structured choice from the supplied options. The client can use that choice to route a workflow and inspect action selection. The AI Agent remains responsible for generation and the wider workflow.
 
 ## Examples
 
