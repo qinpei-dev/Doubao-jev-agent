@@ -10,6 +10,12 @@ Doubao-JEV-Agent is an open-source Python project that exposes JEV decisions and
 
 ## Demo
 
+![Doubao MCP demo showing the jev_decide tool call and decision result](docs/images/doubao-mcp-demo.png)
+
+Tested with Doubao Desktop MCP Connector.
+
+Real MCP call → Real TypeSafe JEV API → Decision result.
+
 Run a decision and local skill execution from the repository root:
 
 ```bash
