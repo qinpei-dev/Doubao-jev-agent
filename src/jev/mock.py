@@ -4,7 +4,8 @@ from ..core.models import DecisionRequest, DecisionResult
 _RULES: dict[str, tuple[tuple[str, ...], str]] = {
     "paper_skill": (("论文", "paper", "格式", "排版", "学术"), "task requires paper or document formatting"),
     "career_skill": (("招聘", "岗位", "职位", "简历", "求职", "jd"), "task concerns career or job analysis"),
-    "coding_skill": (("bug", "代码", "python", "issue", "github", "报错", "编程"), "task requires software development help"),
+    "coding_skill": (("bug", "代码", "python", "issue", "github", "报错", "编程", "接口错误"), "task requires software development help"),
+    "research_skill": (("搜索资料", "查找资料", "调研"), "task requires research"),
     "writing_skill": (("小红书", "文案", "写作", "润色", "文章"), "task requires writing or copy generation"),
     "translation_skill": (("翻译", "translate", "英文"), "task requires translation"),
     "career_agent": (("招聘", "岗位", "职位", "简历", "求职", "jd"), "task concerns career or job analysis"),

@@ -2,7 +2,7 @@
 
 **A JEV-powered decision layer for MCP-compatible AI Agents.**
 
-Originally designed for Doubao Agent ecosystem, now supports MCP-compatible AI Agents.
+Doubao-JEV-Agent provides a decision layer and MCP interface for AI Agents. It is not a complete autonomous agent; the MCP client supplies the task and allowed choices.
 
 > **LLMs generate. JEV decides.**
 
@@ -44,24 +44,22 @@ The included career, paper, coding, and writing skills are simulated workflows. 
 
 ## Why JEV Decision Layer?
 
-In many agents, the LLM also decides which action to take next. That can make tool selection inconsistent, agent paths harder to control, and unnecessary calls harder to avoid. This project puts decision, routing, and skill selection in a separate decision layer. The agent supplies allowed choices; JEV returns a choice that is checked against those options before the selected local skill runs. This provides an explicit place to inspect and constrain action selection, without claiming that every decision is optimal or that it eliminates unnecessary calls.
+In many agents, the LLM also decides which action to take next. That can make tool selection inconsistent, agent paths harder to control, and unnecessary calls harder to avoid. This project puts decision, routing, and skill selection in a separate decision layer. The MCP client supplies allowed choices; JEV returns a choice that is checked against those options before the selected local skill runs. This provides an explicit place to inspect and constrain action selection, without claiming that every decision is optimal or that it eliminates unnecessary calls. See [Use Cases](docs/use-cases.md) for the workflow and its limits.
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-    A[MCP-compatible host]
+    A[AI Agent / MCP Client]
     B[MCP Server]
     C[JEV Decision Layer]
     D[Skill Router]
-    E[Skill Executor]
-    F[Local Skills]
+    E[Skill Execution]
 
     A --> B
     B --> C
     C --> D
     D --> E
-    E --> F
 ```
 
 ## Quick Start
@@ -118,7 +116,7 @@ You can also copy [`mcp.json.example`](mcp.json.example) as a starting point. Fo
 | `agent_run` | Select a registered skill, execute it, and return the decision and result. |
 | `list_skills` | List the skills registered on this server. |
 
-The MCP connector has been tested with Doubao Desktop MCP Connector. Each user runs their own local MCP server; this project does not provide a shared remote MCP service or JEV quota.
+The MCP connector has been tested with Doubao Desktop and Antigravity. See [MCP Client Compatibility](docs/mcp-clients.md) for the validated interactions. Each user runs their own local MCP server; this project does not provide a shared remote MCP service or JEV quota.
 
 ### Use the real JEV API
 
@@ -149,6 +147,16 @@ python -m examples.real_jev_demo
 ```
 
 The demos use the local mock by default. `agent_run_demo` and `real_jev_demo` use TypeSafe JEV when `JEV_API_KEY` is set. No demo includes a bundled API key or project-provided quota.
+
+## Use Cases
+
+Each example shows **Task → JEV → Decision** using the environment-selected JEV client. With no `JEV_API_KEY`, the local mock provides a deterministic demonstration; with a key, the choice comes from the real TypeSafe JEV API and may differ. Run from the repository root:
+
+- [Agent Routing](examples/use_cases/career_decision.py): `python -m examples.use_cases.career_decision`
+- [Coding Decision](examples/use_cases/coding_decision.py): `python -m examples.use_cases.coding_decision`
+- [Research Decision](examples/use_cases/tool_selection.py): `python -m examples.use_cases.tool_selection`
+
+For the reasoning behind these examples, read [Use Cases](docs/use-cases.md).
 
 ### HTTP API example
 
@@ -195,7 +203,7 @@ Run `python -m pytest` before submitting changes. See [CONTRIBUTING.md](CONTRIBU
 
 ## Extending Skills
 
-Developers can extend the agent by adding a `BaseSkill` subclass with a `name`, `description`, and `execute(input)` method, then registering an instance with `SkillRegistry`. See the runnable [Custom Skill Example](examples/custom_skill.py). To make a new skill available to the default MCP server, add it to `create_default_registry()` as described in [CONTRIBUTING.md](CONTRIBUTING.md).
+Developers can extend the server's local skill registry by adding a `BaseSkill` subclass with a `name`, `description`, and `execute(input)` method, then registering an instance with `SkillRegistry`. See the runnable [Custom Skill Example](examples/custom_skill.py). To make a new skill available to the default MCP server, add it to `create_default_registry()` as described in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 See the [Security Policy](SECURITY.md) for vulnerability reporting and credential guidance.
 
