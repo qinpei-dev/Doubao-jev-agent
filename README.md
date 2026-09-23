@@ -178,6 +178,10 @@ In mock mode, the response contains the selected skill and execution result. The
 | `POST` | `/route/agent` | Route a task to an agent. |
 | `POST` | `/api/v1/agent/run` | Decide a skill and execute its workflow. |
 
+## Benchmark
+
+See the measured [Decision Layer Benchmark](benchmark/results.md). Run `python benchmark/run_benchmark.py` to regenerate it locally. This benchmark evaluates decision routing performance, not model generation quality. It uses a local JEV mock and a deterministic direct-selection baseline; it does not call a paid model.
+
 ## Roadmap
 
 This is an early open-source MVP prepared for **v0.1.0**. The current scope covers the decision and MCP integration layer, local demo workflows, and an HTTP API. Possible future work includes more example skills and MCP host examples; no delivery dates are committed.
