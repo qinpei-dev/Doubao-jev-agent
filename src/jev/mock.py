@@ -7,6 +7,7 @@ _RULES: dict[str, tuple[tuple[str, ...], str]] = {
     "coding_skill": (("bug", "代码", "python", "issue", "github", "报错", "编程"), "task requires software development help"),
     "writing_skill": (("小红书", "文案", "写作", "润色", "文章"), "task requires writing or copy generation"),
     "translation_skill": (("翻译", "translate", "英文"), "task requires translation"),
+    "career_agent": (("招聘", "岗位", "职位", "简历", "求职", "jd"), "task concerns career or job analysis"),
     "coding_agent": (("bug", "代码", "python", "issue", "github", "报错", "编程"), "task requires a coding agent"),
     "writing_agent": (("小红书", "文案", "写作", "润色", "文章"), "task requires a writing agent"),
 }

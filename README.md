@@ -21,7 +21,7 @@ flowchart TD
     R --> T[Tools / Agents]
 ```
 
-The JEV boundary is asynchronous and replaceable. Mock mode works without credentials. An optional generic HTTP client is available in real mode; configure its endpoint and key using the environment variables below. The endpoint must accept `{ "task": "...", "options": [...] }` and return `{ "decision": "...", "confidence": 0.9, "reason": "..." }`.
+The JEV boundary is asynchronous and replaceable. Without `JEV_API_KEY`, the application uses its deterministic mock. When a key is present, it calls TypeSafe's hosted System One API and validates that the returned choice is among the requested options.
 
 ## Quick Start
 
@@ -76,7 +76,29 @@ docker compose up --build
 
 The API is then available at `http://localhost:8000`. Mock mode is the default and requires no API key.
 
-To use a compatible JEV endpoint, set `JEV_MODE=real`, `JEV_API_URL`, and `JEV_API_KEY`. The endpoint contract is generic and must be supplied by your JEV deployment; this project does not claim an official JEV API contract.
+## Real JEV API Integration
+
+Request a TypeSafe JEV API key through the [TypeSafe website](https://typesafe.ai/) and create a key in the console when your account has access. The client calls `POST https://api.typesafe.ai/v1/systemone` using Bearer authentication and a typed `choice` question. TypeSafe returns the choice, confidence, and probabilities; this project formats those fields into its `decision`, `confidence`, and `reason` result.
+
+Copy `.env.example` to `.env` and set `JEV_API_KEY` to your key. The key is read from the process environment and is never stored in source. For a shell session, you can export it directly:
+
+```bash
+# macOS / Linux
+export JEV_API_KEY="your_key_here"
+
+# PowerShell
+$env:JEV_API_KEY = "your_key_here"
+```
+
+Run the demo from the repository root:
+
+```bash
+python -m examples.real_jev_demo
+```
+
+It sends `帮我分析这个招聘岗位` with `career_agent`, `coding_agent`, and `writing_agent` as allowed choices, then prints the structured decision, confidence, and reason. Without a key, it automatically runs in mock mode, so local development remains available.
+
+API flow: the demo creates the shared `JEVClient` via `JEVClient.from_env()`, which selects TypeSafe when `JEV_API_KEY` is set or `MockJEVClient` otherwise. The TypeSafe client sends the task as `state`, asks one constrained choice question, validates the returned option, and adapts the typed answer to the existing `DecisionResult` model.
 
 ## Tests
 
@@ -94,8 +116,6 @@ pytest
 - FastAPI service and Docker packaging
 
 ### Future
-
-- Real JEV API integration
 - MCP support
 - More Doubao Agent integrations
 - Multi-agent workflows
