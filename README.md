@@ -180,7 +180,7 @@ In mock mode, the response contains the selected skill and execution result. The
 
 ## Benchmark
 
-See the measured [Decision Layer Benchmark](benchmark/results.md). Run `python benchmark/run_benchmark.py` to regenerate it locally. This benchmark evaluates decision routing performance, not model generation quality. It uses a local JEV mock and a deterministic direct-selection baseline; it does not call a paid model.
+See the [Decision Layer Benchmark](benchmark/results.md). Run `python benchmark/run_benchmark.py` to regenerate it locally. Its main purpose is to test decision routing consistency with a local mock decision backend and a deterministic direct-selection baseline. The included example skills, including `research_skill`, complete a local mock execution path. The reported latency is local Python timing and does not represent real JEV API inference speed. No paid model or external research service is called.
 
 ## Roadmap
 

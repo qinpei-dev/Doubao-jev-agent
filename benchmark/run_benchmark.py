@@ -117,22 +117,23 @@ def render_report(results: list[Result]) -> str:
         "",
         f"- Python: {platform.python_version()} ({platform.system()})",
         f"- MCP: mcp {version('mcp')} installed; transport and client handshake were not measured",
-        "- JEV: local `MockJEVClient` through `DecisionEngine`; no API key or paid model used",
-        f"- Timing: {REPEATS} decision calls per task; each row reports the median in milliseconds; local machine only",
+        "- Decision backend: local `MockJEVClient` through `DecisionEngine`; no real JEV API, API key, or paid model used",
+        f"- Timing: {REPEATS} local decision calls per task; each row reports the median in milliseconds; these latencies do not represent real JEV API inference speed",
         "- Baseline: deterministic keyword selector standing in for direct Agent selection; no LLM was called",
-        "- Execution: existing local demo skills only; `unavailable` means the selected skill is not registered",
+        "- Execution: local mock demo skills, including `research_skill`; `unavailable` means the selected skill is not registered",
+        "- Primary purpose: test decision routing consistency against illustrative task labels and exercise the local execution path",
         "",
         "## Results",
         "",
-        "| Task | Expected | Baseline decision | Baseline latency (ms) | JEV decision | JEV latency (ms) | Confidence | Baseline execution | JEV execution |",
+        "| Task | Expected | Baseline decision | Baseline latency (ms) | Mock decision | Mock latency (ms) | Confidence | Baseline execution | Mock execution |",
         "| --- | --- | --- | ---: | --- | ---: | ---: | --- | --- |",
         *rows,
         "",
         f"- Tasks: {len(results)}; expected labels are illustrative, not a ground-truth quality evaluation.",
-        f"- Average of per-task median decision latency: baseline {baseline_average:.4f} ms; JEV {jev_average:.4f} ms.",
-        f"- Matches to illustrative labels: baseline {baseline_matches}/{len(results)}; JEV {jev_matches}/{len(results)}.",
-        f"- JEV local execution unavailable: {unavailable}/{len(results)} (the default registry has no `research_skill`).",
-        "- Steps per task: baseline 2 (direct decision, execution attempt); JEV 3 (decision, registry routing, execution attempt). These counts describe the instrumented flows, not LLM reasoning steps.",
+        f"- Average of per-task median local decision latency: baseline {baseline_average:.4f} ms; mock backend {jev_average:.4f} ms. These are Python process timings, not real JEV API inference latency.",
+        f"- Matches to illustrative labels: baseline {baseline_matches}/{len(results)}; mock backend {jev_matches}/{len(results)}.",
+        f"- Mock backend local execution unavailable: {unavailable}/{len(results)}.",
+        "- Steps per task: baseline 2 (direct decision, execution attempt); mock backend 3 (decision, registry routing, execution attempt). These counts describe the instrumented flows, not LLM reasoning steps.",
         "",
         "## Cost Estimation",
         "",
@@ -142,10 +143,10 @@ def render_report(results: list[Result]) -> str:
         "",
         "## Analysis",
         "",
-        "JEV Decision Layer focuses on structured routing, predictable decisions, and reducing unnecessary agent execution where the workflow allows it. "
-        "This run measures local mock routing only. It does not establish faster decisions, lower cost, or better quality than an LLM. "
+        "This benchmark primarily tests decision routing consistency with a local mock backend and illustrative labels. "
+        "It does not establish real JEV API inference speed, faster decisions, lower cost, or better quality than an LLM. "
         "The mock routed `帮我定位FastAPI错误` to `writing_skill`, and its 50% confidence on `写一个技术博客` reflects a fallback rather than a matched rule. "
-        "The unregistered research choice also shows that a decision alone does not guarantee execution.",
+        "All selected example skills now complete the local mock execution path, including `research_skill`; this does not perform live research.",
         "",
         "Run `python benchmark/run_benchmark.py` from the repository root to regenerate this machine-specific report.",
         "",
@@ -159,7 +160,7 @@ async def main() -> None:
     path = ROOT / "benchmark" / "results.md"
     path.write_text(render_report(results), encoding="utf-8")
     print(f"Wrote {path} ({len(results)} tasks)")
-    print(f"Average JEV decision latency: {statistics.mean(item.jev_ms for item in results):.4f} ms")
+    print(f"Average local mock decision latency: {statistics.mean(item.jev_ms for item in results):.4f} ms")
 
 
 if __name__ == "__main__":

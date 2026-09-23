@@ -2,6 +2,7 @@ from .base import BaseSkill
 from .career import CareerSkill
 from .paper import PaperSkill
 from .coding import CodingSkill
+from .research import ResearchSkill
 from .writing import WritingSkill
 
 
@@ -25,6 +26,6 @@ class SkillRegistry:
 
 def create_default_registry() -> SkillRegistry:
     registry = SkillRegistry()
-    for skill in (CareerSkill(), PaperSkill(), CodingSkill(), WritingSkill()):
+    for skill in (CareerSkill(), PaperSkill(), CodingSkill(), ResearchSkill(), WritingSkill()):
         registry.register(skill)
     return registry

@@ -36,4 +36,4 @@ Run from the repository root. Without `JEV_API_KEY`, each example uses the local
 - [Coding Decision](../examples/use_cases/coding_decision.py) asks which skill fits a FastAPI error.
 - [Research Decision](../examples/use_cases/tool_selection.py) asks which skill fits research for a technical report.
 
-These examples stop at the decision result. `research_skill` is an illustrative routing choice; it is not registered for execution by the default Skill Executor.
+These examples stop at the decision result. The selected `research_skill` can also run through the default Skill Executor, which returns a local mock result without retrieving external sources.

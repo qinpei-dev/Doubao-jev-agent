@@ -38,7 +38,7 @@ def test_adapter_contract():
 def test_default_registry_contains_all_builtin_skills():
     registry = create_default_registry()
     assert [skill.name for skill in registry.list()] == [
-        "career_skill", "paper_skill", "coding_skill", "writing_skill"
+        "career_skill", "paper_skill", "coding_skill", "research_skill", "writing_skill"
     ]
     assert registry.get("career_skill") is not None
 
@@ -49,6 +49,19 @@ def test_executor_runs_decided_skill():
         "skill": "career_skill",
         "status": "completed",
         "result": "Career analysis workflow executed",
+    }
+
+
+def test_research_decision_executes_mock_skill():
+    task = "搜索资料并生成技术报告"
+    decision = asyncio.run(DecisionEngine(MockJEVClient()).decide(
+        task, ["career_skill", "coding_skill", "research_skill", "writing_skill"]
+    ))
+    assert decision.decision == "research_skill"
+    assert SkillExecutor(create_default_registry()).execute(decision, task) == {
+        "skill": "research_skill",
+        "status": "completed",
+        "result": "Research workflow executed (mock)",
     }
 
 

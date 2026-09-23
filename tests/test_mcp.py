@@ -42,7 +42,7 @@ def test_mcp_tools_run_in_mock_mode():
         "status": "completed",
         "result": "Career analysis workflow executed",
     }
-    assert skills[1]["result"] == ["career_skill", "paper_skill", "coding_skill", "writing_skill"]
+    assert skills[1]["result"] == ["career_skill", "paper_skill", "coding_skill", "research_skill", "writing_skill"]
 
 
 def test_server_module_exposes_stdio_startup_entrypoint():

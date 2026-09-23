@@ -4,31 +4,32 @@
 
 - Python: 3.13.7 (Windows)
 - MCP: mcp 1.30.0 installed; transport and client handshake were not measured
-- JEV: local `MockJEVClient` through `DecisionEngine`; no API key or paid model used
-- Timing: 100 decision calls per task; each row reports the median in milliseconds; local machine only
+- Decision backend: local `MockJEVClient` through `DecisionEngine`; no real JEV API, API key, or paid model used
+- Timing: 100 local decision calls per task; each row reports the median in milliseconds; these latencies do not represent real JEV API inference speed
 - Baseline: deterministic keyword selector standing in for direct Agent selection; no LLM was called
-- Execution: existing local demo skills only; `unavailable` means the selected skill is not registered
+- Execution: local mock demo skills, including `research_skill`; `unavailable` means the selected skill is not registered
+- Primary purpose: test decision routing consistency against illustrative task labels and exercise the local execution path
 
 ## Results
 
-| Task | Expected | Baseline decision | Baseline latency (ms) | JEV decision | JEV latency (ms) | Confidence | Baseline execution | JEV execution |
+| Task | Expected | Baseline decision | Baseline latency (ms) | Mock decision | Mock latency (ms) | Confidence | Baseline execution | Mock execution |
 | --- | --- | --- | ---: | --- | ---: | ---: | --- | --- |
-| 帮我分析一个AI实习岗位 | career_skill | career_skill | 0.0006 | career_skill | 0.0070 | 91% | completed | completed |
-| 分析这个招聘岗位是否适合我 | career_skill | career_skill | 0.0005 | career_skill | 0.0067 | 91% | completed | completed |
-| 帮我定位FastAPI错误 | coding_skill | coding_skill | 0.0013 | writing_skill | 0.0067 | 50% | completed | completed |
-| 排查Python代码报错 | coding_skill | coding_skill | 0.0015 | coding_skill | 0.0067 | 91% | completed | completed |
-| 调研RAG最新方案 | research_skill | research_skill | 0.0021 | research_skill | 0.0066 | 91% | unavailable | unavailable |
-| 调研向量数据库选型 | research_skill | research_skill | 0.0021 | research_skill | 0.0067 | 91% | unavailable | unavailable |
-| 写一个技术博客 | writing_skill | writing_skill | 0.0025 | writing_skill | 0.0065 | 50% | completed | completed |
-| 润色一篇技术文章 | writing_skill | writing_skill | 0.0026 | writing_skill | 0.0067 | 91% | completed | completed |
-| 搜索资料并整理报告 | research_skill | research_skill | 0.0022 | research_skill | 0.0067 | 91% | unavailable | unavailable |
-| 搜索资料并生成技术报告 | research_skill | research_skill | 0.0023 | research_skill | 0.0067 | 91% | unavailable | unavailable |
+| 帮我分析一个AI实习岗位 | career_skill | career_skill | 0.0005 | career_skill | 0.0062 | 91% | completed | completed |
+| 分析这个招聘岗位是否适合我 | career_skill | career_skill | 0.0005 | career_skill | 0.0062 | 91% | completed | completed |
+| 帮我定位FastAPI错误 | coding_skill | coding_skill | 0.0012 | writing_skill | 0.0062 | 50% | completed | completed |
+| 排查Python代码报错 | coding_skill | coding_skill | 0.0014 | coding_skill | 0.0064 | 91% | completed | completed |
+| 调研RAG最新方案 | research_skill | research_skill | 0.0020 | research_skill | 0.0062 | 91% | completed | completed |
+| 调研向量数据库选型 | research_skill | research_skill | 0.0020 | research_skill | 0.0062 | 91% | completed | completed |
+| 写一个技术博客 | writing_skill | writing_skill | 0.0023 | writing_skill | 0.0061 | 50% | completed | completed |
+| 润色一篇技术文章 | writing_skill | writing_skill | 0.0024 | writing_skill | 0.0063 | 91% | completed | completed |
+| 搜索资料并整理报告 | research_skill | research_skill | 0.0021 | research_skill | 0.0062 | 91% | completed | completed |
+| 搜索资料并生成技术报告 | research_skill | research_skill | 0.0021 | research_skill | 0.0062 | 91% | completed | completed |
 
 - Tasks: 10; expected labels are illustrative, not a ground-truth quality evaluation.
-- Average of per-task median decision latency: baseline 0.0018 ms; JEV 0.0067 ms.
-- Matches to illustrative labels: baseline 10/10; JEV 9/10.
-- JEV local execution unavailable: 4/10 (the default registry has no `research_skill`).
-- Steps per task: baseline 2 (direct decision, execution attempt); JEV 3 (decision, registry routing, execution attempt). These counts describe the instrumented flows, not LLM reasoning steps.
+- Average of per-task median local decision latency: baseline 0.0016 ms; mock backend 0.0062 ms. These are Python process timings, not real JEV API inference latency.
+- Matches to illustrative labels: baseline 10/10; mock backend 9/10.
+- Mock backend local execution unavailable: 0/10.
+- Steps per task: baseline 2 (direct decision, execution attempt); mock backend 3 (decision, registry routing, execution attempt). These counts describe the instrumented flows, not LLM reasoning steps.
 
 ## Cost Estimation
 
@@ -36,6 +37,6 @@
 
 ## Analysis
 
-JEV Decision Layer focuses on structured routing, predictable decisions, and reducing unnecessary agent execution where the workflow allows it. This run measures local mock routing only. It does not establish faster decisions, lower cost, or better quality than an LLM. The mock routed `帮我定位FastAPI错误` to `writing_skill`, and its 50% confidence on `写一个技术博客` reflects a fallback rather than a matched rule. The unregistered research choice also shows that a decision alone does not guarantee execution.
+This benchmark primarily tests decision routing consistency with a local mock backend and illustrative labels. It does not establish real JEV API inference speed, faster decisions, lower cost, or better quality than an LLM. The mock routed `帮我定位FastAPI错误` to `writing_skill`, and its 50% confidence on `写一个技术博客` reflects a fallback rather than a matched rule. All selected example skills now complete the local mock execution path, including `research_skill`; this does not perform live research.
 
 Run `python benchmark/run_benchmark.py` from the repository root to regenerate this machine-specific report.
