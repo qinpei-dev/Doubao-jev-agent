@@ -1,5 +1,7 @@
 # Doubao-JEV-Agent
 
+[English](README.md) | [中文](README_CN.md)
+
 **A JEV-powered decision layer exposed through MCP for MCP-compatible AI Agents.**
 
 This project provides a lightweight decision layer between AI clients and execution workflows.
