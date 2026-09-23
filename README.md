@@ -2,22 +2,54 @@
 
 **A JEV-powered decision layer for MCP-compatible AI Agents.**
 
-Let an AI Agent connect to the JEV Decision Engine through MCP to gain structured decisions, Skill Routing, and Agent Execution.
+Originally designed for Doubao Agent ecosystem, now supports MCP-compatible AI Agents.
 
 > **LLMs generate. JEV decides.**
 
 Doubao-JEV-Agent is an open-source Python project that exposes JEV decisions and local skill workflows as MCP tools. An MCP-compatible host sends a task to the server; JEV selects from the allowed options; the Skill Executor runs the selected local skill and returns its result.
 
+## Demo
+
+Run a decision and local skill execution from the repository root:
+
+```bash
+python -m examples.agent_run_demo
+```
+
+In mock mode, the example selects `career_skill` and shows the executor result:
+
+```text
+JEV: career_skill (93.00%)
+Executor: career_skill.execute()
+结果: Career analysis workflow executed
+```
+
+No API key is needed for this demo. With `JEV_API_KEY` set, it calls the real TypeSafe JEV API and the decision may differ.
+
+## Features
+
+- Exposes JEV decisions, skill execution, and skill discovery as MCP tools.
+- Uses the TypeSafe JEV API when `JEV_API_KEY` is configured and validates that each returned choice is allowed.
+- Uses a deterministic local mock without a key, so the project can be tried without external credentials.
+- Includes a FastAPI service, Docker packaging, and demo scripts alongside the MCP server.
+- Provides an extensible skill registry and executor.
+
+The included career, paper, coding, and writing skills are simulated workflows. They demonstrate routing and execution; they do not call external services or perform the described work themselves. The Doubao adapter is an extension contract, not a live Doubao API integration.
+
+## Why JEV Decision Layer?
+
+In many agents, the LLM also decides which action to take next. That can make tool selection inconsistent, agent paths harder to control, and unnecessary calls harder to avoid. This project puts decision, routing, and skill selection in a separate decision layer. The agent supplies allowed choices; JEV returns a choice that is checked against those options before the selected local skill runs. This provides an explicit place to inspect and constrain action selection, without claiming that every decision is optimal or that it eliminates unnecessary calls.
+
 ## Architecture
 
 ```mermaid
 flowchart TD
-    A[Doubao / Claude / MCP Client]
+    A[MCP-compatible host]
     B[MCP Server]
     C[JEV Decision Layer]
     D[Skill Router]
     E[Skill Executor]
-    F[Skills]
+    F[Local Skills]
 
     A --> B
     B --> C
@@ -26,17 +58,7 @@ flowchart TD
     E --> F
 ```
 
-## What it does
-
-- Exposes JEV decision-making, skill execution, and skill discovery as MCP tools.
-- Uses the TypeSafe JEV API when `JEV_API_KEY` is configured, and validates that each returned choice is allowed.
-- Falls back to a deterministic local mock when no key is configured, so the project can be tried without external credentials.
-- Includes a FastAPI service, Docker packaging, and demo scripts alongside the MCP server.
-- Provides an extensible skill registry and executor.
-
-The included career, paper, coding, and writing skills are simulated workflows. They demonstrate routing and execution; they do not call external services or perform the described work themselves. The Doubao adapter is an extension contract, not a live Doubao API integration.
-
-## Quick start
+## Quick Start
 
 Requires Python 3.11 or later.
 
@@ -58,7 +80,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Run the HTTP API
+Run `python -m examples.agent_run_demo` to try the mock workflow, or start the HTTP API:
 
 ```bash
 uvicorn src.main:app --reload
@@ -66,25 +88,7 @@ uvicorn src.main:app --reload
 
 Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) for interactive API documentation. The service starts in mock mode unless a JEV key is configured.
 
-```bash
-curl -X POST http://127.0.0.1:8000/api/v1/agent/run \
-  -H 'Content-Type: application/json' \
-  -d '{"task":"帮我分析这个招聘岗位"}'
-```
-
-Example response:
-
-```json
-{
-  "decision": {"skill": "career_skill", "confidence": 0.95},
-  "execution": {
-    "status": "completed",
-    "result": "Career analysis workflow executed"
-  }
-}
-```
-
-### Connect an MCP host
+## MCP Integration
 
 Install the dependencies, then add the following server entry to your MCP host configuration. Start the host with the repository root as its working directory so Python can import `src`.
 
@@ -108,7 +112,7 @@ You can also copy [`mcp.json.example`](mcp.json.example) as a starting point. Th
 | `agent_run` | Select a registered skill, execute it, and return the decision and result. |
 | `list_skills` | List the skills registered on this server. |
 
-Each user runs their own local MCP server. This project does not provide a shared remote MCP service or JEV quota.
+The MCP connector has been tested with Doubao Desktop MCP Connector. Each user runs their own local MCP server; this project does not provide a shared remote MCP service or JEV quota.
 
 ### Use the real JEV API
 
@@ -118,7 +122,7 @@ Request your own JEV API key through [TypeSafe](https://typesafe.ai/). Set it in
 JEV_API_KEY=your_own_key
 ```
 
-Then run the MCP server as usual with `python -m src.mcp.server`, or run the real API demo:
+Then run the MCP server with `python -m src.mcp.server`, or run the real API demo:
 
 ```bash
 python -m examples.real_jev_demo
@@ -126,17 +130,7 @@ python -m examples.real_jev_demo
 
 Without a key, both use the local mock. With a key, requests go directly from your machine to TypeSafe over HTTPS using your account and quota. Never commit your `.env` file or put a key in an MCP configuration that you share.
 
-## HTTP API
-
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `GET` | `/health` | Check service health. |
-| `POST` | `/decide` | Choose from caller-provided options. |
-| `POST` | `/route/skill` | Route a task to a built-in skill. |
-| `POST` | `/route/agent` | Route a task to an agent. |
-| `POST` | `/api/v1/agent/run` | Decide a skill and execute its workflow. |
-
-## Demos
+## Examples
 
 Run these commands from the repository root:
 
@@ -149,6 +143,30 @@ python -m examples.real_jev_demo
 ```
 
 The demos use the local mock by default. `agent_run_demo` and `real_jev_demo` use TypeSafe JEV when `JEV_API_KEY` is set. No demo includes a bundled API key or project-provided quota.
+
+### HTTP API example
+
+With the API running locally, send a task:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/agent/run \
+  -H 'Content-Type: application/json' \
+  -d '{"task":"帮我分析这个招聘岗位"}'
+```
+
+In mock mode, the response contains the selected skill and execution result. The service also provides:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | Check service health. |
+| `POST` | `/decide` | Choose from caller-provided options. |
+| `POST` | `/route/skill` | Route a task to a built-in skill. |
+| `POST` | `/route/agent` | Route a task to an agent. |
+| `POST` | `/api/v1/agent/run` | Decide a skill and execute its workflow. |
+
+## Roadmap
+
+This is an early open-source MVP prepared for **v0.1.0**. The current scope covers the decision and MCP integration layer, local demo workflows, and an HTTP API. Possible future work includes more example skills and MCP host examples; no delivery dates are committed.
 
 ## Docker
 
@@ -165,17 +183,9 @@ The API is available at `http://localhost:8000`. Docker Compose binds the host p
 - The HTTP API has no authentication. Keep it on a trusted local interface when using a real key; the included Compose configuration binds it to localhost.
 - Real JEV requests go directly from your server to `https://api.typesafe.ai/v1/systemone` over HTTPS.
 
-## Development
+## Contributing
 
-```bash
-python -m pytest
-```
-
-To add a skill, implement the skill interface in `src/skills/base.py` and register an instance in `src/skills/registry.py`. The router offers registered skill names as the allowed decisions, and the executor dispatches the selected skill.
-
-## Project status
-
-This is an early open-source MVP prepared for the **v0.1.0** release. It includes the decision and MCP integration layer, local demo workflows, and an HTTP API. It does not include a frontend, database, user system, hosted SaaS, or a live Doubao API binding.
+Run `python -m pytest` before submitting changes. See [CONTRIBUTING.md](CONTRIBUTING.md) for the skill extension steps and contribution ideas.
 
 ## License
 
