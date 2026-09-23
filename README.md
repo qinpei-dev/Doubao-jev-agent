@@ -40,7 +40,7 @@ No API key is needed for this demo. With `JEV_API_KEY` set, it calls the real Ty
 - Includes a FastAPI service, Docker packaging, and demo scripts alongside the MCP server.
 - Provides an extensible skill registry and executor.
 
-The included career, paper, coding, and writing skills are simulated workflows. They demonstrate routing and execution; they do not call external services or perform the described work themselves. The Doubao adapter is an extension contract, not a live Doubao API integration.
+The included career, paper, coding, research, and writing skills are simulated workflows. They demonstrate routing and execution; they do not call external services or perform the described work themselves. The Doubao adapter is an extension contract, not a live Doubao API integration.
 
 ## Why JEV Decision Layer?
 
@@ -180,7 +180,7 @@ In mock mode, the response contains the selected skill and execution result. The
 
 ## Benchmark
 
-See the [Decision Layer Benchmark](benchmark/results.md). Run `python benchmark/run_benchmark.py` to regenerate it locally. Its main purpose is to test decision routing consistency with a local mock decision backend and a deterministic direct-selection baseline. The included example skills, including `research_skill`, complete a local mock execution path. The reported latency is local Python timing and does not represent real JEV API inference speed. No paid model or external research service is called.
+See the [Decision Routing Evaluation](benchmark/results.md). Run `python benchmark/run_benchmark.py` to regenerate it locally. The 10 example tasks test the decision routing flow, example task matching, confidence, and local demo execution for career, coding, research, and writing skills. The decision backend is a deterministic local mock; its latency does not represent real API latency or LLM generation speed. The evaluation makes no performance or cost claim. No paid model or external research service is called.
 
 ## Roadmap
 

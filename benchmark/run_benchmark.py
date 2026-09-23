@@ -1,13 +1,11 @@
-"""Offline routing benchmark; never loads credentials or calls a paid model."""
+"""Offline decision routing evaluation; no credentials or external calls."""
 
 import asyncio
 from dataclasses import dataclass
 from importlib.metadata import version
 from pathlib import Path
 import platform
-import statistics
 import sys
-from time import perf_counter_ns
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -19,7 +17,6 @@ from src.skills.registry import create_default_registry  # noqa: E402
 
 
 OPTIONS = ["career_skill", "coding_skill", "research_skill", "writing_skill"]
-REPEATS = 100
 TASKS = [
     ("帮我分析一个AI实习岗位", "career_skill"),
     ("分析这个招聘岗位是否适合我", "career_skill"),
@@ -39,12 +36,10 @@ class Result:
     task: str
     expected: str
     baseline: str
-    baseline_ms: float
-    jev: str
-    jev_ms: float
+    mock: str
     confidence: float
     baseline_execution: str
-    jev_execution: str
+    mock_execution: str
 
 
 def baseline_decide(task: str) -> str:
@@ -60,13 +55,8 @@ def baseline_decide(task: str) -> str:
     return OPTIONS[0]
 
 
-def estimated_llm_calls_saved(task_count: int, baseline_calls_per_task: int = 1, jev_calls_per_task: int = 0) -> int:
-    """Hypothetical decision-call difference; excludes other workflow calls."""
-    return task_count * (baseline_calls_per_task - jev_calls_per_task)
-
-
 def execute_local(executor: SkillExecutor, skill: str, task: str) -> str:
-    """Attempt the existing local demo workflow; flag unregistered choices."""
+    """Run the registered local demo workflow."""
     try:
         return executor.execute(skill, task)["status"]
     except ValueError as exc:
@@ -75,80 +65,67 @@ def execute_local(executor: SkillExecutor, skill: str, task: str) -> str:
         raise
 
 
-async def measure_task(task: str, expected: str, engine: DecisionEngine, executor: SkillExecutor) -> Result:
-    baseline_times = []
-    jev_times = []
-    for _ in range(REPEATS):
-        start = perf_counter_ns()
-        baseline = baseline_decide(task)
-        baseline_times.append((perf_counter_ns() - start) / 1_000_000)
-
-        start = perf_counter_ns()
-        decision = await engine.decide(task, OPTIONS)
-        jev_times.append((perf_counter_ns() - start) / 1_000_000)
-
+async def evaluate_task(task: str, expected: str, engine: DecisionEngine, executor: SkillExecutor) -> Result:
+    baseline = baseline_decide(task)
+    decision = await engine.decide(task, OPTIONS)
     assert baseline in OPTIONS and decision.decision in OPTIONS
-    baseline_execution = execute_local(executor, baseline, task)
-    # The registry lookup is the explicit Skill Routing step in the JEV flow.
-    routed = executor.registry.get(decision.decision)
-    jev_execution = execute_local(executor, decision.decision, task) if routed else "unavailable"
     return Result(
-        task, expected, baseline, statistics.median(baseline_times),
-        decision.decision, statistics.median(jev_times), decision.confidence,
-        baseline_execution, jev_execution,
+        task=task,
+        expected=expected,
+        baseline=baseline,
+        mock=decision.decision,
+        confidence=decision.confidence,
+        baseline_execution=execute_local(executor, baseline, task),
+        mock_execution=execute_local(executor, decision.decision, task),
     )
 
 
 def render_report(results: list[Result]) -> str:
-    baseline_average = statistics.mean(item.baseline_ms for item in results)
-    jev_average = statistics.mean(item.jev_ms for item in results)
     baseline_matches = sum(item.baseline == item.expected for item in results)
-    jev_matches = sum(item.jev == item.expected for item in results)
-    unavailable = sum(item.jev_execution == "unavailable" for item in results)
+    mock_matches = sum(item.mock == item.expected for item in results)
+    unavailable = sum(item.mock_execution == "unavailable" for item in results)
     rows = [
-        f"| {item.task} | {item.expected} | {item.baseline} | {item.baseline_ms:.4f} | "
-        f"{item.jev} | {item.jev_ms:.4f} | {item.confidence:.0%} | {item.baseline_execution} | {item.jev_execution} |"
+        f"| {item.task} | {item.expected} | {item.baseline} | {item.mock} | "
+        f"{'match' if item.mock == item.expected else 'mismatch'} | {item.confidence:.0%} | "
+        f"{item.baseline_execution} | {item.mock_execution} |"
         for item in results
     ]
     return "\n".join([
-        "# Decision Layer Benchmark",
+        "# Decision Routing Evaluation",
+        "",
+        "## Scope",
+        "",
+        "- This 10-task evaluation exercises the decision routing flow: task → mock decision engine → registered skill → local demo execution.",
+        "- Expected labels are illustrative example task matching criteria, not verified ground truth or a measure of general decision quality.",
+        "- The baseline is a deterministic keyword selector for direct selection; it is not an LLM or a measured Agent.",
+        "- The decision backend is local `MockJEVClient` through `DecisionEngine`; no real JEV API, API key, paid model, or external research service is used.",
+        "- Mock engine latency does not represent real API latency or LLM generation speed. This evaluation makes no timing or cost claim.",
         "",
         "## Environment",
         "",
         f"- Python: {platform.python_version()} ({platform.system()})",
-        f"- MCP: mcp {version('mcp')} installed; transport and client handshake were not measured",
-        "- Decision backend: local `MockJEVClient` through `DecisionEngine`; no real JEV API, API key, or paid model used",
-        f"- Timing: {REPEATS} local decision calls per task; each row reports the median in milliseconds; these latencies do not represent real JEV API inference speed",
-        "- Baseline: deterministic keyword selector standing in for direct Agent selection; no LLM was called",
-        "- Execution: local mock demo skills, including `research_skill`; `unavailable` means the selected skill is not registered",
-        "- Primary purpose: test decision routing consistency against illustrative task labels and exercise the local execution path",
+        f"- MCP: mcp {version('mcp')} installed; transport and client handshake were not evaluated",
+        "- Execution: local demo skills; `unavailable` means the selected skill is not registered",
         "",
         "## Results",
         "",
-        "| Task | Expected | Baseline decision | Baseline latency (ms) | Mock decision | Mock latency (ms) | Confidence | Baseline execution | Mock execution |",
-        "| --- | --- | --- | ---: | --- | ---: | ---: | --- | --- |",
+        "| Task | Example label | Baseline route | Mock route | Routing match | Confidence | Baseline execution | Mock execution |",
+        "| --- | --- | --- | --- | --- | ---: | --- | --- |",
         *rows,
         "",
-        f"- Tasks: {len(results)}; expected labels are illustrative, not a ground-truth quality evaluation.",
-        f"- Average of per-task median local decision latency: baseline {baseline_average:.4f} ms; mock backend {jev_average:.4f} ms. These are Python process timings, not real JEV API inference latency.",
-        f"- Matches to illustrative labels: baseline {baseline_matches}/{len(results)}; mock backend {jev_matches}/{len(results)}.",
-        f"- Mock backend local execution unavailable: {unavailable}/{len(results)}.",
-        "- Steps per task: baseline 2 (direct decision, execution attempt); mock backend 3 (decision, registry routing, execution attempt). These counts describe the instrumented flows, not LLM reasoning steps.",
-        "",
-        "## Cost Estimation",
-        "",
-        "`estimated_llm_calls_saved(task_count, baseline_calls_per_task=1, jev_calls_per_task=0)` is an assumption-based interface. "
-        f"Under those inputs it returns {estimated_llm_calls_saved(len(results))} decision calls for {len(results)} tasks. "
-        "No LLM calls, token counts, prices, or real savings were measured; the wider Agent may still call an LLM.",
+        f"- Tasks evaluated: {len(results)}.",
+        f"- Example task matching: baseline {baseline_matches}/{len(results)}; mock route {mock_matches}/{len(results)}.",
+        f"- Mock route local execution unavailable: {unavailable}/{len(results)}.",
+        "- Routing consistency here describes agreement with these example labels only; the tasks were run once each with a deterministic mock.",
         "",
         "## Analysis",
         "",
-        "This benchmark primarily tests decision routing consistency with a local mock backend and illustrative labels. "
-        "It does not establish real JEV API inference speed, faster decisions, lower cost, or better quality than an LLM. "
-        "The mock routed `帮我定位FastAPI错误` to `writing_skill`, and its 50% confidence on `写一个技术博客` reflects a fallback rather than a matched rule. "
-        "All selected example skills now complete the local mock execution path, including `research_skill`; this does not perform live research.",
+        "The mock routes `帮我定位FastAPI错误` to `writing_skill`, which differs from its `coding_skill` example label. "
+        "Both that task and `写一个技术博客` have 50% confidence because no mock rule matched. "
+        "Career, coding, research, and writing routes all complete the local demo flow. "
+        "The `research_skill` executor returns a mock result and does not retrieve sources.",
         "",
-        "Run `python benchmark/run_benchmark.py` from the repository root to regenerate this machine-specific report.",
+        "Run `python benchmark/run_benchmark.py` from the repository root to regenerate this report.",
         "",
     ])
 
@@ -156,11 +133,11 @@ def render_report(results: list[Result]) -> str:
 async def main() -> None:
     engine = DecisionEngine(MockJEVClient())
     executor = SkillExecutor(create_default_registry())
-    results = [await measure_task(task, expected, engine, executor) for task, expected in TASKS]
+    results = [await evaluate_task(task, expected, engine, executor) for task, expected in TASKS]
     path = ROOT / "benchmark" / "results.md"
     path.write_text(render_report(results), encoding="utf-8")
     print(f"Wrote {path} ({len(results)} tasks)")
-    print(f"Average local mock decision latency: {statistics.mean(item.jev_ms for item in results):.4f} ms")
+    print(f"Example task matching: {sum(item.mock == item.expected for item in results)}/{len(results)} mock routes")
 
 
 if __name__ == "__main__":
