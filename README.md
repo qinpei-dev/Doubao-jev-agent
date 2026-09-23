@@ -110,7 +110,7 @@ Install the dependencies, then add the following server entry to your MCP host c
 }
 ```
 
-You can also copy [`mcp.json.example`](mcp.json.example) as a starting point. The MCP server uses stdio transport and provides:
+You can also copy [`mcp.json.example`](mcp.json.example) as a starting point. For desktop setup steps, see [Doubao MCP Setup](docs/doubao-mcp.md). The MCP server uses stdio transport and provides:
 
 | Tool | Purpose |
 | --- | --- |
@@ -192,6 +192,12 @@ The API is available at `http://localhost:8000`. Docker Compose binds the host p
 ## Contributing
 
 Run `python -m pytest` before submitting changes. See [CONTRIBUTING.md](CONTRIBUTING.md) for the skill extension steps and contribution ideas.
+
+## Extending Skills
+
+Developers can extend the agent by adding a `BaseSkill` subclass with a `name`, `description`, and `execute(input)` method, then registering an instance with `SkillRegistry`. See the runnable [Custom Skill Example](examples/custom_skill.py). To make a new skill available to the default MCP server, add it to `create_default_registry()` as described in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+See the [Security Policy](SECURITY.md) for vulnerability reporting and credential guidance.
 
 ## License
 
