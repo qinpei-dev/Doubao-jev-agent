@@ -2,68 +2,43 @@
 
 [English](README.md) | [中文](README_CN.md)
 
-**A JEV-powered decision layer exposed through MCP for MCP-compatible AI Agents.**
+**Stop AI agents from executing tools unchecked.**
 
-This project provides a lightweight decision layer between AI clients and execution workflows.
+A lightweight execution-control layer for MCP agents with deterministic policies, JEV-backed decisions, human approval, and one-time execution permits.
 
-Originally built for Doubao MCP integration, now supports MCP-compatible clients.
+### Controlled Agent Showcase
 
-Doubao-JEV-Agent is an MCP Server for Agent clients and Agent workflows. An MCP-compatible AI Agent supplies a task and allowed choices; JEV selects from those options, and the local executor runs the selected skill. The client remains responsible for the wider Agent workflow.
-
-v0.3.0 adds an optional controlled execution loop. JEV does not execute tools or replace the Agent; it sits at the decision boundary between an action proposal and local tool execution.
-
-```mermaid
-flowchart TD
-    C[MCP Client] --> A[Agent Planner]
-    A --> P[Action Proposal]
-    P --> D[Deterministic Policy]
-    D --> J[JEV Choice]
-    J --> O{ALLOW / REVIEW / DENY}
-    O -->|allow| X[One-use Execution Permit]
-    O -->|review| H[Wait for explicit caller approval]
-    O -->|deny| B[Blocked]
-    H --> X
-    X --> T[Sandbox Tool Executor]
-    T --> R[Observation]
-    R --> A
-```
-
-`allow`, `review`, and `deny` are this project's application-layer interpretation of the TypeSafe Choice result. They are not a separate TypeSafe Gate primitive. The legacy `agent_run` skill workflow remains available; use `controlled_agent_run` for the permit-gated local tools. See [Controlled Agent](docs/controlled-agent.md) for its sandbox and limits.
-
-## Demo
-
-![Doubao MCP demo showing the jev_decide tool call and decision result](docs/images/doubao-mcp-demo.png)
-
-Tested MCP Clients:
-
-- Doubao Desktop MCP Connector
-- Antigravity MCP Client
-
-Real MCP call → Real TypeSafe JEV API → Decision result.
-
-Run a decision and local skill execution from the repository root:
-
-```bash
-python -m examples.agent_run_demo
-```
-
-In mock mode, the example selects `career_skill` and shows the executor result:
-
+<!-- Visual slot: replace this verified terminal capture with a GIF when available. -->
 ```text
-JEV: career_skill (91.00%)
-Executor: career_skill.execute()
-结果: Career analysis workflow executed
+SAFE ACTION        ALLOW  → permit issued → executed
+SENSITIVE ACTION  REVIEW → waits for caller approval → executed
+FORBIDDEN ACTION  DENY   → no permit → executor not called
 ```
 
-No API key is needed for this demo. With `JEV_API_KEY` set, it calls the real TypeSafe JEV API and the decision may differ.
-
-Run the new file-execution loop from the repository root:
+[View the real terminal output](docs/assets/showcase/controlled-agent-showcase.txt) or run the complete demonstration:
 
 ```bash
-python -m examples.controlled_agent_demo
+python -m examples.showcase
 ```
 
-The deterministic demo reads the actual `README.md`, creates `output/summary.md` inside the configured sandbox, and prints a structured trace. The generated `output/` directory is ignored by Git. It uses the local JEV mock by default and stays offline; pass `--real-jev` to use the configured `JEV_API_KEY`. If you run the demo again with an existing output file, the action waits for review; pass `--approve-existing` only when you intend to overwrite it. The tool execution itself is real.
+The showcase uses real sandbox file tools and the existing control chain with an offline JEV mock. It copies `README.md` into a disposable sandbox, checks that a reviewed file stays unchanged until explicit caller approval, and verifies that `../secret.txt` never reaches JEV or the executor. No API key is needed.
+
+### Execution path
+
+`Agent proposal → DeterministicPolicy → DecisionController (JEV Choice when policy passes) → ExecutionPermit → SandboxToolExecutor → Observation`
+
+Policy `DENY` stops before JEV. Policy `REVIEW` waits for caller approval. `ALLOW` receives a one-use permit. These outcomes are this project's application-layer interpretation of TypeSafe Choice, not a separate TypeSafe Gate primitive. See [Controlled Agent](docs/controlled-agent.md) for sandbox limits and the machine-readable trace.
+
+## Quick Start
+
+Requires Python 3.11 or later. From the repository root:
+
+```bash
+pip install -r requirements.txt
+python -m examples.showcase
+```
+
+For MCP setup and the optional real JEV API, see [MCP](#mcp). The `agent_run` skill workflow remains available.
 
 ## Features
 
@@ -73,8 +48,6 @@ The deterministic demo reads the actual `README.md`, creates `output/summary.md`
 - Uses a deterministic local mock without a key, so the project can be tried without external credentials.
 - Includes a FastAPI service, Docker packaging, and demo scripts alongside the MCP server.
 - Provides an extensible skill registry and executor.
-
-The included career, paper, coding, research, and writing skills are simulated workflows. They demonstrate routing and execution; they do not call external services or perform the described work themselves. The Doubao adapter is an extension contract, not a live Doubao API integration.
 
 ## Why Decision Layer?
 
@@ -109,36 +82,6 @@ The MCP client provides the task and allowed choices. JEV returns a choice that 
 ![Doubao-JEV-Agent architecture diagram](docs/images/architecture.png)
 
 MCP handles communication. JEV makes a structured decision from the client's allowed choices. The Skill Router selects the registered skill, and the executor runs its local workflow.
-
-## Quick Start
-
-Requires Python 3.11 or later.
-
-```bash
-git clone https://github.com/qinpei-dev/Doubao-jev-agent.git
-cd Doubao-jev-agent
-python -m venv .venv
-```
-
-Activate the environment and install dependencies:
-
-```bash
-# macOS / Linux
-source .venv/bin/activate
-
-# Windows PowerShell
-.venv\Scripts\Activate.ps1
-
-pip install -r requirements.txt
-```
-
-Run `python -m examples.agent_run_demo` to try the mock workflow, or start the HTTP API:
-
-```bash
-uvicorn src.main:app --reload
-```
-
-Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) for interactive API documentation. The service starts in mock mode unless a JEV key is configured.
 
 ## MCP
 
@@ -185,6 +128,43 @@ python -m examples.real_jev_demo
 ```
 
 Without a key, both use the local mock. With a key, requests go directly from your machine to TypeSafe over HTTPS using your account and quota. Never commit your `.env` file or put a key in an MCP configuration that you share.
+
+## Legacy / Earlier examples
+
+The included career, paper, coding, research, and writing skills are simulated workflows. They demonstrate routing and execution; they do not call external services or perform the described work themselves. The Doubao adapter is an extension contract, not a live Doubao API integration.
+
+![Doubao MCP demo showing the jev_decide tool call and decision result](docs/images/doubao-mcp-demo.png)
+
+Tested MCP Clients:
+
+- Doubao Desktop MCP Connector
+- Antigravity MCP Client
+
+Real MCP call → Real TypeSafe JEV API → Decision result.
+
+Run a decision and local skill execution from the repository root:
+
+```bash
+python -m examples.agent_run_demo
+```
+
+In mock mode, the example selects `career_skill` and shows the executor result:
+
+```text
+JEV: career_skill (91.00%)
+Executor: career_skill.execute()
+结果: Career analysis workflow executed
+```
+
+No API key is needed for this demo. With `JEV_API_KEY` set, it calls the real TypeSafe JEV API and the decision may differ.
+
+Run the new file-execution loop from the repository root:
+
+```bash
+python -m examples.controlled_agent_demo
+```
+
+The deterministic demo reads the actual `README.md`, creates `output/summary.md` inside the configured sandbox, and prints a structured trace. The generated `output/` directory is ignored by Git. It uses the local JEV mock by default and stays offline; pass `--real-jev` to use the configured `JEV_API_KEY`. If you run the demo again with an existing output file, the action waits for review; pass `--approve-existing` only when you intend to overwrite it. The tool execution itself is real.
 
 ## Examples
 

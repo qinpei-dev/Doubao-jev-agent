@@ -2,66 +2,43 @@
 
 [English](README.md) | [中文](README_CN.md)
 
-**一个通过 MCP 暴露的 JEV 决策层，为 MCP-compatible AI Agents 提供结构化决策和技能路由能力。**
+**阻止 AI Agent 在未经控制的情况下直接执行工具。**
 
-本项目在 AI 客户端与执行流程之间提供轻量的 Decision Layer。项目最初面向豆包 MCP 集成开发，目前支持 MCP-compatible 客户端。
+一个面向 MCP Agent 的轻量级执行控制层，通过确定性策略、JEV 决策、人工审批和一次性 Execution Permit 控制真实工具执行。
 
-Doubao-JEV-Agent 以 MCP Server 的形式服务于 Agent 客户端及其工作流。MCP-compatible AI Agent 提交任务和允许选择的选项，JEV 从中作出选择，再由本地 Skill Executor 执行选中的技能。完整的 Agent 工作流仍由客户端负责。本项目不是 AI Agent Framework。
+### Controlled Agent Showcase
 
-v0.3.0 新增可选的受控执行循环。JEV 不执行工具，也不替代 Agent；它位于 Action Proposal 与本地工具执行之间的决策边界。
-
-```mermaid
-flowchart TD
-    C[MCP Client] --> A[Agent Planner]
-    A --> P[Action Proposal]
-    P --> D[确定性策略]
-    D --> J[JEV Choice]
-    J --> O{ALLOW / REVIEW / DENY}
-    O -->|allow| X[一次性 Execution Permit]
-    O -->|review| H[等待调用方明确批准]
-    O -->|deny| B[阻止执行]
-    H --> X
-    X --> T[沙箱工具执行器]
-    T --> R[Observation]
-    R --> A
-```
-
-`allow`、`review` 和 `deny` 是本项目对 TypeSafe Choice 结果构建的 application-layer abstraction，并非 TypeSafe 独立的 Gate primitive。旧版 `agent_run` 技能流程继续保留；需要经过 Permit 控制的本地工具时使用 `controlled_agent_run`。沙箱和限制见[受控 Agent 说明](docs/controlled-agent.md)。
-
-## 演示
-
-![豆包 MCP 演示：调用 jev_decide 并返回决策结果](docs/images/doubao-mcp-demo.png)
-
-已测试的 MCP 客户端：
-
-- Doubao Desktop MCP Connector
-- Antigravity MCP Client
-
-真实 MCP 调用 → 真实 TypeSafe JEV API → 决策结果。
-
-在仓库根目录运行决策与本地技能执行演示：
-
-```bash
-python -m examples.agent_run_demo
-```
-
-在 mock 模式下，示例会选择 `career_skill`，并显示执行结果：
-
+<!-- 视觉占位：可靠录制 GIF 后可替换这段真实终端输出。 -->
 ```text
-JEV: career_skill (91.00%)
-Executor: career_skill.execute()
-结果: Career analysis workflow executed
+SAFE ACTION        ALLOW  → 签发 Permit → 执行
+SENSITIVE ACTION  REVIEW → 等待人工批准 → 执行
+FORBIDDEN ACTION  DENY   → 无 Permit → 不调用 Executor
 ```
 
-运行此演示无需 API key。设置 `JEV_API_KEY` 后，演示会调用真实的 TypeSafe JEV API，决策结果可能不同。
-
-在仓库根目录运行新的文件执行循环：
+[查看真实终端输出](docs/assets/showcase/controlled-agent-showcase.txt)，或直接运行：
 
 ```bash
-python -m examples.controlled_agent_demo
+python -m examples.showcase
 ```
 
-确定性演示会读取真实的 `README.md`，在配置的 sandbox 内创建 `output/summary.md`，并打印结构化 Trace。生成的 `output/` 目录由 Git 忽略。默认使用本地 JEV mock 且不访问网络；添加 `--real-jev` 才会使用已配置的 `JEV_API_KEY`。再次运行且输出文件已存在时，Action 会等待审批；只有明确同意覆盖时才添加 `--approve-existing`。文件工具仍会真实执行。
+Showcase 使用现有控制链和离线 JEV mock，针对临时沙箱内的真实文件运行。覆盖已有文件时，在调用方明确批准前保持原样；`../secret.txt` 不会进入 JEV 或 Executor。无需 API key。
+
+### 执行路径
+
+`Agent proposal → DeterministicPolicy → DecisionController（策略通过时调用 JEV Choice）→ ExecutionPermit → SandboxToolExecutor → Observation`
+
+策略 `DENY` 在 JEV 前阻止操作；策略 `REVIEW` 等待调用方批准；`ALLOW` 获取一次性 Permit。三种结果是本项目对 TypeSafe Choice 的应用层解释，并非 TypeSafe 独立的 Gate primitive。沙箱限制和机器可读 Trace 见[受控 Agent 说明](docs/controlled-agent.md)。
+
+## Quick Start
+
+需要 Python 3.11 或更新版本。在仓库根目录运行：
+
+```bash
+pip install -r requirements.txt
+python -m examples.showcase
+```
+
+MCP 配置与可选的真实 JEV API 见下方 [MCP](#mcp)；旧版 `agent_run` 技能流程继续保留。
 
 ## Features
 
@@ -71,8 +48,6 @@ python -m examples.controlled_agent_demo
 - 未配置 key 时使用确定性的本地 mock，方便在没有外部凭据的情况下体验项目。
 - 除 MCP Server 外，还提供 FastAPI 服务、Docker 打包配置和演示脚本。
 - 提供可扩展的技能注册表和 Skill Executor。
-
-内置的职业、论文、编程、研究和写作技能均为模拟工作流，用于展示路由与执行流程；它们不会调用外部服务，也不会真正完成所描述的任务。豆包适配器定义的是扩展接口，并非可用的豆包 API 集成。
 
 ## Why Decision Layer?
 
@@ -107,36 +82,6 @@ MCP 客户端提供任务和允许的选项。JEV 返回选择，系统在路由
 ![Doubao-JEV-Agent 架构图](docs/images/architecture.png)
 
 MCP 负责通信；JEV 根据客户端允许的选项作出结构化决策；Skill Router 找到已注册的技能；Skill Executor 运行相应的本地工作流。
-
-## Quick Start
-
-需要 Python 3.11 或更新版本。
-
-```bash
-git clone https://github.com/qinpei-dev/Doubao-jev-agent.git
-cd Doubao-jev-agent
-python -m venv .venv
-```
-
-激活虚拟环境并安装依赖：
-
-```bash
-# macOS / Linux
-source .venv/bin/activate
-
-# Windows PowerShell
-.venv\Scripts\Activate.ps1
-
-pip install -r requirements.txt
-```
-
-运行 `python -m examples.agent_run_demo` 体验 mock 工作流，或启动 HTTP API：
-
-```bash
-uvicorn src.main:app --reload
-```
-
-打开 [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) 查看交互式 API 文档。未配置 JEV key 时，服务默认使用 mock 模式。
 
 ## MCP
 
@@ -185,6 +130,43 @@ python -m examples.real_jev_demo
 ```
 
 未配置 key 时，两者都使用本地 mock。配置 key 后，请求会从你的设备通过 HTTPS 直接发送至 TypeSafe，并使用你自己的账号和额度。不要提交 `.env` 文件，也不要在共享的 MCP 配置中放入 key。
+
+## Legacy / Earlier examples（早期示例）
+
+内置的职业、论文、编程、研究和写作技能均为模拟工作流，用于展示路由与执行流程；它们不会调用外部服务，也不会真正完成所描述的任务。豆包适配器定义的是扩展接口，并非可用的豆包 API 集成。
+
+![豆包 MCP 演示：调用 jev_decide 并返回决策结果](docs/images/doubao-mcp-demo.png)
+
+已测试的 MCP 客户端：
+
+- Doubao Desktop MCP Connector
+- Antigravity MCP Client
+
+真实 MCP 调用 → 真实 TypeSafe JEV API → 决策结果。
+
+在仓库根目录运行决策与本地技能执行演示：
+
+```bash
+python -m examples.agent_run_demo
+```
+
+在 mock 模式下，示例会选择 `career_skill`，并显示执行结果：
+
+```text
+JEV: career_skill (91.00%)
+Executor: career_skill.execute()
+结果: Career analysis workflow executed
+```
+
+运行此演示无需 API key。设置 `JEV_API_KEY` 后，演示会调用真实的 TypeSafe JEV API，决策结果可能不同。
+
+在仓库根目录运行新的文件执行循环：
+
+```bash
+python -m examples.controlled_agent_demo
+```
+
+确定性演示会读取真实的 `README.md`，在配置的 sandbox 内创建 `output/summary.md`，并打印结构化 Trace。生成的 `output/` 目录由 Git 忽略。默认使用本地 JEV mock 且不访问网络；添加 `--real-jev` 才会使用已配置的 `JEV_API_KEY`。再次运行且输出文件已存在时，Action 会等待审批；只有明确同意覆盖时才添加 `--approve-existing`。文件工具仍会真实执行。
 
 ## 示例
 

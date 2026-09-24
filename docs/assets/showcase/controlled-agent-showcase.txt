@@ -1,0 +1,30 @@
+CONTROLLED AGENT EXECUTION
+
+SAFE ACTION
+Agent       read README.md
+Policy      PASS
+JEV (mock)  ALLOW 0.50
+Permit      ISSUED
+Executor    SUCCESS
+Result      EXECUTED
+
+SENSITIVE ACTION
+Agent       overwrite output/existing.txt
+Policy      REVIEW
+JEV         NOT CALLED
+Permit      NONE
+Executor    NOT CALLED
+Result      WAITING FOR APPROVAL
+
+Caller      APPROVE
+Permit      ISSUED
+Executor    SUCCESS
+Result      EXECUTED AFTER APPROVAL
+
+FORBIDDEN ACTION
+Agent       read ../secret.txt
+Policy      DENY
+JEV         NOT CALLED
+Permit      NONE
+Executor    NOT CALLED
+Result      BLOCKED
