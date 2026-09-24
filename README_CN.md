@@ -58,10 +58,10 @@ Executor: career_skill.execute()
 在仓库根目录运行新的文件执行循环：
 
 ```bash
-python -m examples.controlled_agent_demo
+python -m examples.controlled_agent_demo --approve-existing
 ```
 
-确定性演示会读取真实的 `README.md`，在配置的 sandbox 内写入 `output/summary.md`，并打印结构化 Trace。默认使用本地 JEV mock 且不访问网络；添加 `--real-jev` 才会使用已配置的 `JEV_API_KEY`。若输出文件已存在，Action 会等待审批；只有明确同意覆盖时才添加 `--approve-existing`。文件工具仍会真实执行。
+确定性演示会读取真实的 `README.md`，在配置的 sandbox 内写入 `output/summary.md`，并打印结构化 Trace。默认使用本地 JEV mock 且不访问网络；添加 `--real-jev` 才会使用已配置的 `JEV_API_KEY`。本仓库已追踪 `output/summary.md`，因此示例命令用 `--approve-existing` 明确批准覆盖这个演示文件；去掉该参数时 Action 会等待审批。文件工具仍会真实执行。
 
 ## Features
 

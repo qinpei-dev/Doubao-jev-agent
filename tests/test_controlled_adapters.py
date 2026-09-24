@@ -6,6 +6,8 @@ import json
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.exceptions import ToolError
+import pytest
 
 from src.api.routes import build_router
 from src.core.decision import DecisionEngine
@@ -37,6 +39,9 @@ def test_mcp_controlled_tool_runs_real_sandbox_work(tmp_path):
     trace = asyncio.run(run())
     assert trace["status"] == "completed"
     assert (tmp_path / "output" / "summary.md").exists()
+    assert "Real source text" not in json.dumps(trace)
+    assert trace["steps"][0]["tool_result"]["output"] == "[redacted]"
+    assert trace["steps"][1]["proposal"]["arguments"]["content"] == "[redacted]"
 
 
 def test_mcp_approval_resumes_same_reviewed_action(tmp_path):
@@ -52,8 +57,13 @@ def test_mcp_approval_resumes_same_reviewed_action(tmp_path):
         )
         pending = json.loads(pending_result[0].text)
         assert pending["status"] == "approval_required"
+        assert pending["pending_action"]["arguments"]["content"] == "[redacted]"
+        with pytest.raises(ToolError, match="no pending action"):
+            await server.call_tool(
+                "approve_action", {"run_id": "wrong-run", "action_id": pending["pending_action"]["action_id"]}
+            )
         approved_result = await server.call_tool(
-            "approve_action", {"action_id": pending["pending_action"]["action_id"]}
+            "approve_action", {"run_id": pending["run_id"], "action_id": pending["pending_action"]["action_id"]}
         )
         return pending, json.loads(approved_result[0].text)
 
@@ -89,12 +99,21 @@ def test_http_approval_and_invalid_requests(tmp_path):
     pending = pending_response.json()
     assert pending_response.status_code == 200
     assert pending["status"] == "approval_required"
+    assert (output / "summary.md").read_text(encoding="utf-8") == "before"
+    assert client.post(
+        "/api/v1/controlled-agent/wrong-run/approve",
+        json={"action_id": pending["pending_action"]["action_id"]},
+    ).status_code == 409
     approval = client.post(
         f"/api/v1/controlled-agent/{pending['run_id']}/approve",
         json={"action_id": pending["pending_action"]["action_id"]},
     )
     assert approval.status_code == 200
     assert approval.json()["status"] == "completed"
+    assert client.post(
+        f"/api/v1/controlled-agent/{pending['run_id']}/approve",
+        json={"action_id": pending["pending_action"]["action_id"]},
+    ).status_code == 409
     assert client.post(
         "/api/v1/controlled-agent/run", json={"task": " ", "max_steps": 0}
     ).status_code == 422

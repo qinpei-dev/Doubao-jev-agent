@@ -62,7 +62,7 @@ def build_router(
     @api.post("/api/v1/controlled-agent/run")
     async def controlled_agent_run(body: ControlledAgentRunRequest):
         trace = await controlled_agent.run(body.task, max_steps=body.max_steps)
-        return trace.model_dump(mode="json")
+        return trace.public_dict()
 
     @api.post("/api/v1/controlled-agent/{run_id}/approve")
     async def approve_controlled_action(run_id: str, body: ApprovalRequest):
@@ -70,6 +70,6 @@ def build_router(
             trace = await controlled_agent.approve_action(body.action_id, run_id=run_id)
         except ApprovalError as exc:
             raise HTTPException(409, str(exc)) from exc
-        return trace.model_dump(mode="json")
+        return trace.public_dict()
 
     return api

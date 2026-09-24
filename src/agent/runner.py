@@ -66,7 +66,7 @@ class ControlledAgentRunner:
         self.permit_authority = ExecutionPermitAuthority()
         self.controller = DecisionController(engine, self.policy, minimum_confidence)
         self.executor = SandboxToolExecutor(self.policy, self.permit_authority)
-        self._pending: dict[str, _PendingApproval] = {}
+        self._pending: dict[tuple[str, str], _PendingApproval] = {}
 
     async def run(self, task: str, max_steps: int = 5) -> AgentTrace:
         request = ControlledAgentRunRequest(task=task, max_steps=max_steps)
@@ -80,13 +80,14 @@ class ControlledAgentRunner:
         )
         return await self._run_loop(state, 1)
 
-    async def approve_action(self, action_id: str, run_id: str | None = None) -> AgentTrace:
-        pending = self._pending.get(action_id)
-        if pending is None or (run_id is not None and pending.run_id != run_id):
+    async def approve_action(self, action_id: str, run_id: str) -> AgentTrace:
+        key = (run_id, action_id)
+        pending = self._pending.get(key)
+        if pending is None:
             raise ApprovalError("no pending action matches this approval")
         # Remove before awaiting anything: concurrent/replayed approvals cannot
         # execute the same action twice.
-        del self._pending[action_id]
+        del self._pending[key]
         if pending.proposal is None or pending.decision is None or pending.policy_result is None:
             raise ApprovalError("pending action state is incomplete")
         if pending.proposal.digest() != pending.proposal_digest:
@@ -123,7 +124,7 @@ class ControlledAgentRunner:
             step.policy_result = current_policy
             step.decision = refreshed_decision
             step.execution_status = "approval_required"
-            self._pending[action_id] = pending
+            self._pending[key] = pending
             return self._trace(
                 pending,
                 "approval_required",
@@ -276,7 +277,7 @@ class ControlledAgentRunner:
                 state.proposal_digest = proposed.digest()
                 state.policy_result = policy_result
                 state.decision = decision
-                self._pending[proposed.action_id] = state
+                self._pending[(state.run_id, proposed.action_id)] = state
                 return self._trace(
                     state,
                     "approval_required",
@@ -315,7 +316,7 @@ class ControlledAgentRunner:
                 state.proposal_digest = proposed.digest()
                 state.policy_result = refreshed_policy
                 state.decision = review_decision
-                self._pending[proposed.action_id] = state
+                self._pending[(state.run_id, proposed.action_id)] = state
                 return self._trace(
                     state,
                     "approval_required",

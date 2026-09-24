@@ -50,13 +50,13 @@ def register_tools(
     async def controlled_agent_run(task: str, max_steps: int = 5) -> dict:
         """Run proposed local actions through policy, JEV, permits, and sandbox tools."""
         trace = await controlled_agent.run(task, max_steps=max_steps)
-        return trace.model_dump(mode="json")
+        return trace.public_dict()
 
     @server.tool()
-    async def approve_action(action_id: str) -> dict:
+    async def approve_action(run_id: str, action_id: str) -> dict:
         """Approve and resume one action currently waiting for caller review."""
-        trace = await controlled_agent.approve_action(action_id)
-        return trace.model_dump(mode="json")
+        trace = await controlled_agent.approve_action(action_id, run_id=run_id)
+        return trace.public_dict()
 
 
 def create_mcp_server(

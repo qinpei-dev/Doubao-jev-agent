@@ -154,6 +154,22 @@ class AgentTrace(BaseModel):
     pending_action: ActionProposal | None = None
     pending_decision: ControlDecision | None = None
 
+    def public_dict(self) -> dict[str, Any]:
+        """Return an adapter-safe trace without file contents used by the planner."""
+        data = self.model_dump(mode="json")
+        for step in data["steps"]:
+            proposal = step.get("proposal")
+            if proposal and proposal["tool"] == "write_file":
+                proposal["arguments"]["content"] = "[redacted]"
+            if proposal and proposal["tool"] == "read_file":
+                if step.get("tool_result"):
+                    step["tool_result"]["output"] = "[redacted]"
+                if step.get("observation"):
+                    step["observation"]["output"] = "[redacted]"
+        if data["pending_action"] and data["pending_action"]["tool"] == "write_file":
+            data["pending_action"]["arguments"]["content"] = "[redacted]"
+        return data
+
 
 class ControlledAgentRunRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")

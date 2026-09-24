@@ -364,7 +364,7 @@ def test_wrong_review_action_id_is_rejected_without_execution(tmp_path):
     with pytest.raises(ApprovalError, match="no pending action"):
         asyncio.run(runner.approve_action("wrong-action", run_id=pending.run_id))
     assert target.read_text(encoding="utf-8") == "unchanged"
-    assert action.action_id in runner._pending
+    assert (pending.run_id, action.action_id) in runner._pending
 
 
 def test_changed_action_invalidates_old_review(tmp_path):
@@ -375,7 +375,7 @@ def test_changed_action_invalidates_old_review(tmp_path):
     action = proposal("write_file", {"path": "existing.txt", "content": "approved content"})
     runner, _ = make_runner(root, planner=SingleActionPlanner(action))
     pending = asyncio.run(runner.run("overwrite", max_steps=2))
-    runner._pending[action.action_id].proposal.arguments["content"] = "tampered"
+    runner._pending[(pending.run_id, action.action_id)].proposal.arguments["content"] = "tampered"
     with pytest.raises(ApprovalError, match="action changed"):
         asyncio.run(runner.approve_action(action.action_id, run_id=pending.run_id))
     assert target.read_text(encoding="utf-8") == "unchanged"

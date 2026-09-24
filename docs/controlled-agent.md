@@ -27,7 +27,7 @@ The v0.2.1 `jev_decide`, `agent_run`, and `list_skills` tools remain available f
 3. Absolute paths, traversal, resolved paths outside the configured root, and commands outside the exact allowlist are denied before JEV.
 4. Writing an existing file returns `approval_required`. Other policy-passing actions are sent to JEV as a Choice among `allow`, `review`, and `deny`. Proposed write content is not included in that Choice request.
 5. Only an `allow` or an explicit approval of a reviewed action can receive a permit. Denied or invalid decisions cannot reach the executor.
-6. The executor checks the permit, consumes it once, rechecks the policy, invokes the fixed tool registry, and returns a typed result. The result becomes an observation for the planner.
+6. The executor rechecks policy, checks and consumes the permit once, invokes the fixed tool registry, and returns a typed result. The result becomes an observation for the planner.
 7. Successful results, policy denials, and tool errors are passed back as observations. The planner may finish or propose another action; review pauses for approval. The runner also enforces `max_steps` (default 5, maximum 20).
 
 ## Permit model
@@ -36,7 +36,9 @@ The v0.2.1 `jev_decide`, `agent_run`, and `list_skills` tools remain available f
 
 ## Review flow
 
-When an action needs review, the run returns `status: "approval_required"`, its `run_id`, `pending_action`, `pending_decision`, and a trace. No tool has run for that action. Approve through MCP with `approve_action(action_id)` or HTTP with `POST /api/v1/controlled-agent/{run_id}/approve` and `{"action_id":"..."}`. The service then issues a caller-sourced permit, executes the action once, feeds the result to the planner, and continues the same run. A wrong, stale, or replayed action ID is rejected. Pending runs are in memory only and do not survive a process restart.
+When an action needs review, the run returns `status: "approval_required"`, its `run_id`, `pending_action`, `pending_decision`, and a trace. No tool has run for that action. Approve through MCP with `approve_action(run_id, action_id)` or HTTP with `POST /api/v1/controlled-agent/{run_id}/approve` and `{"action_id":"..."}`. The service then issues a caller-sourced permit, executes the action once, feeds the result to the planner, and continues the same run. A wrong, stale, or replayed run/action pair is rejected. Pending runs are in memory only and do not survive a process restart.
+
+Public MCP and HTTP traces redact `read_file` results and proposed `write_file` content. The planner still receives the full read observation inside the process. Reviewers can inspect the target path and proposal digest; they should approve only tasks they initiated and trust. A custom planner's description or final answer remains caller-controlled text.
 
 ## Sandbox tools
 
@@ -54,10 +56,10 @@ The configured root is the MCP/API process working directory by default. Start i
 Run the no-key example from the repository root:
 
 ```bash
-python -m examples.controlled_agent_demo
+python -m examples.controlled_agent_demo --approve-existing
 ```
 
-It reads the actual README, creates a deterministic short summary, writes `output/summary.md`, and prints a machine-readable trace. It uses `MockJEVClient` and stays offline by default. Add `--real-jev` to use TypeSafe JEV with the configured `JEV_API_KEY`. If the destination exists, the action waits for review; `--approve-existing` is an explicit caller approval to overwrite it.
+It reads the actual README, creates a deterministic short summary, writes `output/summary.md`, and prints a machine-readable trace. It uses `MockJEVClient` and stays offline by default. Add `--real-jev` to use TypeSafe JEV with the configured `JEV_API_KEY`. The repository already tracks the destination, so this example explicitly approves its overwrite with `--approve-existing`; omit the flag to observe the pending review.
 
 The HTTP endpoints are:
 
