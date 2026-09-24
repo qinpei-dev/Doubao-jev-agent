@@ -8,7 +8,8 @@
 - Offline control-flow tests and a real local README-to-summary demonstration.
 
 ### Fixed
-- Bind MCP approvals to both run and action IDs, redact file contents from public traces, and explicitly approve the tracked demo output in CI.
+- Bind MCP approvals to both run and action IDs and redact file contents from public traces.
+- Stop tracking the generated `output/summary.md`; fresh CI checkouts create it during the controlled-agent smoke.
 
 ## [0.2.1] - 2026-09-25
 

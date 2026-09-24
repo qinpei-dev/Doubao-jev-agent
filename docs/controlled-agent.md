@@ -56,10 +56,12 @@ The configured root is the MCP/API process working directory by default. Start i
 Run the no-key example from the repository root:
 
 ```bash
-python -m examples.controlled_agent_demo --approve-existing
+python -m examples.controlled_agent_demo
 ```
 
-It reads the actual README, creates a deterministic short summary, writes `output/summary.md`, and prints a machine-readable trace. It uses `MockJEVClient` and stays offline by default. Add `--real-jev` to use TypeSafe JEV with the configured `JEV_API_KEY`. The repository already tracks the destination, so this example explicitly approves its overwrite with `--approve-existing`; omit the flag to observe the pending review.
+It reads the actual README, creates a deterministic short summary, creates `output/summary.md`, and prints a machine-readable trace. The generated `output/` directory is ignored by Git. It uses `MockJEVClient` and stays offline by default. Add `--real-jev` to use TypeSafe JEV with the configured `JEV_API_KEY`. On later runs, an existing destination waits for review; pass `--approve-existing` only to explicitly approve that overwrite.
+
+Release preparation: `src/main.py` continues to advertise version `0.2.1` on this feature branch. Update it to `0.3.0` when preparing the merge/release.
 
 The HTTP endpoints are:
 

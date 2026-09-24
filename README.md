@@ -60,10 +60,10 @@ No API key is needed for this demo. With `JEV_API_KEY` set, it calls the real Ty
 Run the new file-execution loop from the repository root:
 
 ```bash
-python -m examples.controlled_agent_demo --approve-existing
+python -m examples.controlled_agent_demo
 ```
 
-The deterministic demo reads the actual `README.md`, writes `output/summary.md` inside the configured sandbox, and prints a structured trace. It uses the local JEV mock by default and stays offline; pass `--real-jev` to use the configured `JEV_API_KEY`. This checkout already tracks `output/summary.md`, so the example passes `--approve-existing` as explicit approval for that known overwrite. Without the flag, the action waits for review. The tool execution itself is real.
+The deterministic demo reads the actual `README.md`, creates `output/summary.md` inside the configured sandbox, and prints a structured trace. The generated `output/` directory is ignored by Git. It uses the local JEV mock by default and stays offline; pass `--real-jev` to use the configured `JEV_API_KEY`. If you run the demo again with an existing output file, the action waits for review; pass `--approve-existing` only when you intend to overwrite it. The tool execution itself is real.
 
 ## Features
 
