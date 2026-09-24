@@ -6,7 +6,11 @@ from .api.routes import build_router
 
 def create_app() -> FastAPI:
     client = JEVClient.from_env()
-    app = FastAPI(title="Doubao JEV Agent", version="0.1.0", description="LLM generates. JEV decides.")
+    app = FastAPI(
+        title="Doubao-JEV-Agent",
+        version="0.2.0",
+        description="JEV-powered decision routing for MCP-compatible AI Agents.",
+    )
     app.include_router(build_router(DecisionEngine(client)))
     return app
 

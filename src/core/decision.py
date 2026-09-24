@@ -7,4 +7,8 @@ class DecisionEngine:
         self.client = client
 
     async def decide(self, task: str, options: list[str]) -> DecisionResult:
-        return await self.client.decide(DecisionRequest(task=task, options=options))
+        request = DecisionRequest(task=task, options=options)
+        result = await self.client.decide(request)
+        if result.decision not in request.options:
+            raise ValueError("JEV returned a decision outside the allowed options")
+        return result

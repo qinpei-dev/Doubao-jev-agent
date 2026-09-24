@@ -37,3 +37,11 @@ Run from the repository root. Without `JEV_API_KEY`, each example uses the local
 - [Research Decision](../examples/use_cases/tool_selection.py) asks which skill fits research for a technical report.
 
 These examples stop at the decision result. The selected `research_skill` can also run through the default Skill Executor, which returns a local mock result without retrieving external sources.
+
+## Native JEV choices and application-level gates
+
+TypeSafe documents three native question types: [Choice](https://docs.typesafe.ai/primitives/choice), [Score](https://docs.typesafe.ai/primitives/score), and [Noul](https://docs.typesafe.ai/primitives/noul). This repository currently integrates the Choice response (`choice`, `confidence`, and `probabilities`). Score and Noul are not exposed by its client or MCP tools.
+
+An Agent can use `jev_decide` to ask for an application-level action gate by supplying options such as `allow`, `review`, and `deny`, with the proposed action and applicable policy in the task. That gate is a Choice-based application abstraction. The caller owns the threshold and final action; this project does not execute arbitrary file, email, or shell actions. The separate `agent_run` tool executes only a registered local demo skill.
+
+TypeSafe Choice includes probabilities that caller code can sort. This repository discards the full probability map and exposes the selected choice, confidence, and a locally constructed summary reason in the HTTP API; its MCP tool returns only the choice and confidence. The adapter uses the highest-probability alternative in that summary, but does not expose a ranked list. Applications that need one must sort Choice probabilities themselves; TypeSafe documents these probabilities rather than a separate ranking primitive. The API evaluates the state supplied by its caller, so any verification question must be grounded in that state; the repository does not retrieve external evidence.

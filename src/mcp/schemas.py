@@ -1,10 +1,11 @@
 """Typed inputs and outputs exposed by the MCP tools."""
 from pydantic import BaseModel, Field
 
+from ..core.models import AgentRunRequest, DecisionRequest
 
-class JEVDecideInput(BaseModel):
+
+class JEVDecideInput(DecisionRequest):
     task: str = Field(min_length=1, description="Task to make a decision about")
-    options: list[str] = Field(min_length=1, description="Allowed decision options")
 
 
 class JEVDecision(BaseModel):
@@ -12,7 +13,7 @@ class JEVDecision(BaseModel):
     confidence: float = Field(ge=0, le=1)
 
 
-class AgentRunInput(BaseModel):
+class AgentRunInput(AgentRunRequest):
     task: str = Field(min_length=1, description="Task to route and execute")
 
 

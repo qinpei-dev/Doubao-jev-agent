@@ -28,7 +28,7 @@ python -m examples.agent_run_demo
 在 mock 模式下，示例会选择 `career_skill`，并显示执行结果：
 
 ```text
-JEV: career_skill (93.00%)
+JEV: career_skill (91.00%)
 Executor: career_skill.execute()
 结果: Career analysis workflow executed
 ```
@@ -75,19 +75,7 @@ MCP 客户端提供任务和允许的选项。JEV 返回选择，系统在路由
 
 ## 架构
 
-```text
-AI 客户端 / Agent
-        ↓
-MCP 协议
-        ↓
-Doubao-JEV-Agent MCP Server
-        ↓
-JEV Decision Layer
-        ↓
-Skill Router
-        ↓
-执行层 / Skill Executor
-```
+![Doubao-JEV-Agent 架构图](docs/images/architecture.png)
 
 MCP 负责通信；JEV 根据客户端允许的选项作出结构化决策；Skill Router 找到已注册的技能；Skill Executor 运行相应的本地工作流。
 
@@ -219,7 +207,7 @@ curl -X POST http://127.0.0.1:8000/api/v1/agent/run \
 
 ## 路线图
 
-本项目是面向 **v0.1.0** 的早期开源 MVP。目前范围包括决策与 MCP 集成层、本地演示工作流和 HTTP API。未来可能增加更多示例技能和 MCP host 配置示例，但尚未承诺交付日期。
+最新发布版本为 [v0.2.0](https://github.com/qinpei-dev/Doubao-jev-agent/releases/tag/v0.2.0)，包括 MCP 决策层、本地模拟工作流、HTTP API 和离线决策路由评估。未来可能增加更多 MCP host 配置示例，但尚未承诺交付日期。
 
 ## Docker
 

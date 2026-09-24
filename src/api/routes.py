@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+import httpx
 from ..core.models import DecisionRequest, DecisionResult, RouteRequest, RouteResult, AgentRouteResult, AgentRunRequest, AgentRunResult
 from ..core.decision import DecisionEngine
 from ..core.router import SkillRouter, AgentRouter
@@ -16,24 +17,32 @@ def build_router(engine: DecisionEngine, registry: SkillRegistry | None = None) 
 
     @api.post("/decide", response_model=DecisionResult)
     async def decide(body: DecisionRequest):
-        result = await engine.decide(body.task, body.options)
-        if result.decision not in body.options:
-            raise HTTPException(502, "Decision engine returned an unavailable option")
-        return result
+        try:
+            return await engine.decide(body.task, body.options)
+        except (ValueError, httpx.HTTPError) as exc:
+            raise HTTPException(502, "Decision engine failed or returned an invalid decision") from exc
 
     @api.post("/route/skill", response_model=RouteResult)
-    async def route_skill(body: RouteRequest): return await skills.route(body.task)
+    async def route_skill(body: RouteRequest):
+        try:
+            return await skills.route(body.task)
+        except (ValueError, httpx.HTTPError) as exc:
+            raise HTTPException(502, "Decision engine failed or returned an invalid decision") from exc
 
     @api.post("/route/agent", response_model=AgentRouteResult)
-    async def route_agent(body: RouteRequest): return await agents.route(body.task)
+    async def route_agent(body: RouteRequest):
+        try:
+            return await agents.route(body.task)
+        except (ValueError, httpx.HTTPError) as exc:
+            raise HTTPException(502, "Decision engine failed or returned an invalid decision") from exc
 
     @api.post("/api/v1/agent/run", response_model=AgentRunResult)
     async def run_agent(body: AgentRunRequest):
-        decision = await engine.decide(body.task, [skill.name for skill in registry.list()])
         try:
+            decision = await engine.decide(body.task, [skill.name for skill in registry.list()])
             execution = executor.execute(decision, body.task)
-        except ValueError as exc:
-            raise HTTPException(502, str(exc)) from exc
+        except (ValueError, httpx.HTTPError) as exc:
+            raise HTTPException(502, "Decision engine failed or returned an invalid decision") from exc
         return {
             "decision": {"skill": decision.decision, "confidence": decision.confidence},
             "execution": {"status": execution["status"], "result": execution["result"]},

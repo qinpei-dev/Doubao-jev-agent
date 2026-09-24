@@ -19,10 +19,6 @@ def register_tools(
     async def jev_decide(task: str, options: list[str]) -> dict:
         """Make a constrained decision with the JEV Decision Engine."""
         request = JEVDecideInput(task=task, options=options)
-        if not request.task.strip():
-            raise ValueError("task must not be empty")
-        if any(not option.strip() for option in request.options):
-            raise ValueError("options must contain non-empty choices")
         decision = await engine.decide(request.task, request.options)
         if decision.decision not in request.options:
             raise ValueError("Decision engine returned an unavailable option")
@@ -32,8 +28,6 @@ def register_tools(
     async def agent_run(task: str) -> dict:
         """Run JEV skill selection followed by local Skill Executor execution."""
         request = AgentRunInput(task=task)
-        if not request.task.strip():
-            raise ValueError("task must not be empty")
         decision = await engine.decide(request.task, [skill.name for skill in registry.list()])
         execution = executor.execute(decision, request.task)
         return AgentRunOutput(

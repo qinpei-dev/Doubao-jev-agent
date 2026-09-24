@@ -1,7 +1,7 @@
 from .decision import DecisionEngine
 from .models import RouteResult, AgentRouteResult
 
-SKILLS = ["paper_skill", "career_skill", "coding_skill", "writing_skill"]
+SKILLS = ["paper_skill", "career_skill", "coding_skill", "writing_skill", "research_skill"]
 AGENTS = ["coding_agent", "writing_agent", "general_agent"]
 
 
