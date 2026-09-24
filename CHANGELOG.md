@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Added
+- Controlled local Agent loop with deterministic policy, JEV Choice decisions, explicit review approval, one-use execution permits, sandboxed tools, and structured traces.
+- FastMCP tools `controlled_agent_run` and `approve_action`, plus matching FastAPI endpoints.
+- Offline control-flow tests and a real local README-to-summary demonstration.
+
 ## [0.2.1] - 2026-09-25
 
 ### Fixed

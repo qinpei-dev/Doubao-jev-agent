@@ -27,7 +27,7 @@
    ```
 
    Python must start in this directory so it can import `src`. Select the `python` executable from the virtual environment if Doubao Desktop does not inherit your activated environment.
-6. Save the connector and check that the `jev_decide`, `agent_run`, and `list_skills` tools appear.
+6. Save the connector and check that the `jev_decide`, `agent_run`, `list_skills`, `controlled_agent_run`, and `approve_action` tools appear. The controlled tools are new in the v0.3 development branch; the earlier client validation covered the first three tools.
 
 The equivalent MCP server configuration is:
 

@@ -8,6 +8,26 @@
 
 Doubao-JEV-Agent 以 MCP Server 的形式服务于 Agent 客户端及其工作流。MCP-compatible AI Agent 提交任务和允许选择的选项，JEV 从中作出选择，再由本地 Skill Executor 执行选中的技能。完整的 Agent 工作流仍由客户端负责。本项目不是 AI Agent Framework。
 
+v0.3.0 开发分支新增可选的受控执行循环。JEV 不执行工具，也不替代 Agent；它位于 Action Proposal 与本地工具执行之间的决策边界。
+
+```mermaid
+flowchart TD
+    C[MCP Client] --> A[Agent Planner]
+    A --> P[Action Proposal]
+    P --> D[确定性策略]
+    D --> J[JEV Choice]
+    J --> O{ALLOW / REVIEW / DENY}
+    O -->|allow| X[一次性 Execution Permit]
+    O -->|review| H[等待调用方明确批准]
+    O -->|deny| B[阻止执行]
+    H --> X
+    X --> T[沙箱工具执行器]
+    T --> R[Observation]
+    R --> A
+```
+
+`allow`、`review` 和 `deny` 是本项目对 TypeSafe Choice 结果构建的 application-layer abstraction，并非 TypeSafe 独立的 Gate primitive。旧版 `agent_run` 技能流程继续保留；需要经过 Permit 控制的本地工具时使用 `controlled_agent_run`。沙箱和限制见[受控 Agent 说明](docs/controlled-agent.md)。
+
 ## 演示
 
 ![豆包 MCP 演示：调用 jev_decide 并返回决策结果](docs/images/doubao-mcp-demo.png)
@@ -35,9 +55,18 @@ Executor: career_skill.execute()
 
 运行此演示无需 API key。设置 `JEV_API_KEY` 后，演示会调用真实的 TypeSafe JEV API，决策结果可能不同。
 
+在仓库根目录运行新的文件执行循环：
+
+```bash
+python -m examples.controlled_agent_demo
+```
+
+确定性演示会读取真实的 `README.md`，在配置的 sandbox 内写入 `output/summary.md`，并打印结构化 Trace。默认使用本地 JEV mock 且不访问网络；添加 `--real-jev` 才会使用已配置的 `JEV_API_KEY`。若输出文件已存在，Action 会等待审批；只有明确同意覆盖时才添加 `--approve-existing`。文件工具仍会真实执行。
+
 ## Features
 
 - 通过 MCP 工具提供 JEV 决策、技能执行和技能发现。
+- 提供带 Permit 的受控 Agent loop、本地沙箱文件工具、显式审批和可程序化 Trace。
 - 配置 `JEV_API_KEY` 后调用 TypeSafe JEV API，并校验返回的选项是否在调用方允许的范围内。
 - 未配置 key 时使用确定性的本地 mock，方便在没有外部凭据的情况下体验项目。
 - 除 MCP Server 外，还提供 FastAPI 服务、Docker 打包配置和演示脚本。
@@ -111,7 +140,7 @@ uvicorn src.main:app --reload
 
 ## MCP
 
-MCP（Model Context Protocol）为 AI 客户端连接外部工具与服务提供标准方式。本 MCP Server 暴露 `jev_decide`、`agent_run` 和 `list_skills`。
+MCP（Model Context Protocol）为 AI 客户端连接外部工具与服务提供标准方式。本 MCP Server 暴露 `jev_decide`、`agent_run`、`list_skills`、`controlled_agent_run` 和 `approve_action`。
 
 安装依赖后，将以下配置加入 MCP host。启动 host 时，以仓库根目录为工作目录，使 Python 能导入 `src`。
 
@@ -134,10 +163,12 @@ MCP（Model Context Protocol）为 AI 客户端连接外部工具与服务提供
 | `jev_decide` | 使用 JEV 从调用方给定的选项中作出选择。 |
 | `agent_run` | 选择并执行已注册的技能，返回决策和执行结果。 |
 | `list_skills` | 列出此服务器已注册的技能。 |
+| `controlled_agent_run` | 通过确定性策略、JEV Choice、Permit 和沙箱执行器运行本地文件操作。 |
+| `approve_action` | 批准并继续执行 `approval_required` 返回的单个 Action。 |
 
 ### MCP Client Compatibility
 
-MCP 连接已在 Doubao Desktop 和 Antigravity 上测试。具体交互见 [MCP 客户端兼容性说明](docs/mcp-clients.md)。每位用户都需要运行自己的本地 MCP Server；本项目不提供共享的远程 MCP 服务或 JEV 额度。
+v0.2.1 的 MCP 连接已在 Doubao Desktop 和 Antigravity 上测试。新增的受控工具目前有 FastMCP 自动化测试，但尚未在这两个客户端中手动验证。详情见 [MCP 客户端兼容性说明](docs/mcp-clients.md)。每位用户都需要运行自己的本地 MCP Server；本项目不提供共享的远程 MCP 服务或 JEV 额度。
 
 ### 使用真实 JEV API
 
@@ -200,6 +231,8 @@ curl -X POST http://127.0.0.1:8000/api/v1/agent/run \
 | `POST` | `/route/skill` | 将任务路由至内置技能。 |
 | `POST` | `/route/agent` | 将任务路由至 Agent。 |
 | `POST` | `/api/v1/agent/run` | 决定使用哪项技能，并执行其工作流。 |
+| `POST` | `/api/v1/controlled-agent/run` | 通过受控执行循环运行 Action，并返回 Trace。 |
+| `POST` | `/api/v1/controlled-agent/{run_id}/approve` | 批准等待审核的对应 Action。 |
 
 ## Decision Routing Evaluation
 

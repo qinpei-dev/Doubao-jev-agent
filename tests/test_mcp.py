@@ -16,7 +16,9 @@ from src.mcp.tools import create_mcp_server
 def test_mcp_server_registers_expected_tools():
     server = create_mcp_server(MockJEVClient())
     tools = asyncio.run(server.list_tools())
-    assert {tool.name for tool in tools} == {"jev_decide", "agent_run", "list_skills"}
+    assert {tool.name for tool in tools} == {
+        "jev_decide", "agent_run", "list_skills", "controlled_agent_run", "approve_action"
+    }
     assert server.name == "doubao-jev-agent"
 
 
