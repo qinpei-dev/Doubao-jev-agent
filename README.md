@@ -205,7 +205,7 @@ See the [Decision Routing Evaluation](benchmark/results.md). Run `python benchma
 
 ## Roadmap
 
-The latest published release is [v0.2.0](https://github.com/qinpei-dev/Doubao-jev-agent/releases/tag/v0.2.0). It provides the MCP decision layer, local demo workflows, an HTTP API, and offline decision-routing evaluation. Possible future work includes more MCP host examples; no delivery dates are committed.
+The latest published release is [v0.2.1](https://github.com/qinpei-dev/Doubao-jev-agent/releases/tag/v0.2.1). It provides the MCP decision layer, local demo workflows, an HTTP API, and offline decision-routing evaluation. Possible future work includes more MCP host examples; no delivery dates are committed.
 
 ## Docker
 

@@ -2,10 +2,27 @@
 
 ## Unreleased
 
-- Validate non-blank, unique decision options and reject choices outside the caller's allowed set before routing or execution.
-- Validate TypeSafe Choice response fields with offline MockTransport tests.
-- Add Python 3.11–3.13 CI for pytest and the credential-free mock benchmark.
-- Clarify that action gates are caller-level abstractions over Choice and keep execution caller-controlled.
+## [0.2.1] - 2026-09-25
+
+### Fixed
+- Centralized and hardened JEV decision validation.
+- Reject invalid, blank, duplicate, and unavailable decision options.
+- Fixed registered `research_skill` routing.
+- Improved TypeSafe response validation and error handling.
+
+### Tests
+- Expanded test coverage from 15 to 39 tests.
+- Added offline TypeSafe response parsing tests.
+- Added invalid-choice and validation boundary tests.
+
+### CI
+- Added GitHub Actions CI for Python 3.11, 3.12, and 3.13.
+- Added pytest and mock benchmark smoke checks.
+
+### Documentation
+- Aligned README / README_CN with actual JEV capabilities and current project behavior.
+- Clarified Choice as the currently integrated native primitive.
+- Clarified that ranking / action gating remain application-layer abstractions.
 
 ## v0.1.0
 

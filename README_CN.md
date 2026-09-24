@@ -207,7 +207,7 @@ curl -X POST http://127.0.0.1:8000/api/v1/agent/run \
 
 ## 路线图
 
-最新发布版本为 [v0.2.0](https://github.com/qinpei-dev/Doubao-jev-agent/releases/tag/v0.2.0)，包括 MCP 决策层、本地模拟工作流、HTTP API 和离线决策路由评估。未来可能增加更多 MCP host 配置示例，但尚未承诺交付日期。
+最新发布版本为 [v0.2.1](https://github.com/qinpei-dev/Doubao-jev-agent/releases/tag/v0.2.1)，包括 MCP 决策层、本地模拟工作流、HTTP API 和离线决策路由评估。未来可能增加更多 MCP host 配置示例，但尚未承诺交付日期。
 
 ## Docker
 
