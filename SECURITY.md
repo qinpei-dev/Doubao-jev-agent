@@ -15,3 +15,12 @@ Please report suspected vulnerabilities privately. Use GitHub's **Report a vulne
 - Run the STDIO MCP server only from a trusted local checkout and Python environment. Review the configured `command`, `args`, and working directory before connecting a desktop client.
 - Store MCP configuration files containing secrets privately. Prefer a local environment variable or private `.env` file for `JEV_API_KEY` rather than putting the key in a configuration file you may share.
 - Grant the MCP connector access only to the tools and files it needs, and do not expose the local server to untrusted users.
+
+## Controlled Agent scope
+
+- The controlled execution example is for a trusted local sandbox. File tools resolve paths against the configured sandbox root and deny absolute paths, traversal, and paths resolving outside that root.
+- The tool set has no arbitrary shell. `run_safe_command` accepts only the documented fixed read-only command aliases and invokes them with `shell=False`.
+- Review actions remain pending until the caller explicitly approves the matching `action_id`. Approval state and one-use permits are held in memory and are lost when the process exits.
+- Deterministic policy runs before JEV and takes precedence over a JEV Choice. The `allow` / `review` / `deny` values are application-layer choices built on the Choice response; they are not a separate TypeSafe Gate primitive.
+- JEV is not the only safety boundary. The executor requires a one-use permit bound to the action ID and proposal digest, and it rechecks the sandbox policy before execution.
+- This same-process example is not an operating-system security sandbox and must not be used for privileged production actions or with an untrusted caller. Do not describe it as a “safe Agent.”

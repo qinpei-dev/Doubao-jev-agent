@@ -1,6 +1,8 @@
 """MCP tool registration backed by the existing JEV and skill components."""
 from mcp.server.fastmcp import FastMCP
+from pathlib import Path
 
+from ..agent import ControlledAgentRunner, DeterministicDemoAgent
 from ..core.decision import DecisionEngine
 from ..jev.client import JEVClient
 from ..skills import SkillExecutor, SkillRegistry, create_default_registry
@@ -11,9 +13,13 @@ def register_tools(
     server: FastMCP,
     engine: DecisionEngine,
     registry: SkillRegistry | None = None,
+    controlled_agent: ControlledAgentRunner | None = None,
 ) -> None:
     registry = registry or create_default_registry()
     executor = SkillExecutor(registry)
+    controlled_agent = controlled_agent or ControlledAgentRunner(
+        engine, Path.cwd(), DeterministicDemoAgent()
+    )
 
     @server.tool()
     async def jev_decide(task: str, options: list[str]) -> dict:
@@ -40,11 +46,30 @@ def register_tools(
         """List skill names supported by this Doubao JEV Agent instance."""
         return [skill.name for skill in registry.list()]
 
+    @server.tool()
+    async def controlled_agent_run(task: str, max_steps: int = 5) -> dict:
+        """Run proposed local actions through policy, JEV, permits, and sandbox tools."""
+        trace = await controlled_agent.run(task, max_steps=max_steps)
+        return trace.public_dict()
 
-def create_mcp_server(client: JEVClient | None = None) -> FastMCP:
+    @server.tool()
+    async def approve_action(run_id: str, action_id: str) -> dict:
+        """Approve and resume one action currently waiting for caller review."""
+        trace = await controlled_agent.approve_action(action_id, run_id=run_id)
+        return trace.public_dict()
+
+
+def create_mcp_server(
+    client: JEVClient | None = None,
+    sandbox_root: str | Path | None = None,
+) -> FastMCP:
     """Create the MCP server, defaulting to the environment-selected JEV client."""
     from ..jev.client import JEVClient as ClientFactory
 
     server = FastMCP("doubao-jev-agent")
-    register_tools(server, DecisionEngine(client or ClientFactory.from_env()))
+    engine = DecisionEngine(client or ClientFactory.from_env())
+    controlled_agent = ControlledAgentRunner(
+        engine, sandbox_root or Path.cwd(), DeterministicDemoAgent()
+    )
+    register_tools(server, engine, controlled_agent=controlled_agent)
     return server

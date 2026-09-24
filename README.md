@@ -10,6 +10,26 @@ Originally built for Doubao MCP integration, now supports MCP-compatible clients
 
 Doubao-JEV-Agent is an MCP Server for Agent clients and Agent workflows. An MCP-compatible AI Agent supplies a task and allowed choices; JEV selects from those options, and the local executor runs the selected skill. The client remains responsible for the wider Agent workflow.
 
+The v0.3.0 development branch adds an optional controlled execution loop. JEV does not execute tools or replace the Agent; it sits at the decision boundary between an action proposal and local tool execution.
+
+```mermaid
+flowchart TD
+    C[MCP Client] --> A[Agent Planner]
+    A --> P[Action Proposal]
+    P --> D[Deterministic Policy]
+    D --> J[JEV Choice]
+    J --> O{ALLOW / REVIEW / DENY}
+    O -->|allow| X[One-use Execution Permit]
+    O -->|review| H[Wait for explicit caller approval]
+    O -->|deny| B[Blocked]
+    H --> X
+    X --> T[Sandbox Tool Executor]
+    T --> R[Observation]
+    R --> A
+```
+
+`allow`, `review`, and `deny` are this project's application-layer interpretation of the TypeSafe Choice result. They are not a separate TypeSafe Gate primitive. The legacy `agent_run` skill workflow remains available; use `controlled_agent_run` for the permit-gated local tools. See [Controlled Agent](docs/controlled-agent.md) for its sandbox and limits.
+
 ## Demo
 
 ![Doubao MCP demo showing the jev_decide tool call and decision result](docs/images/doubao-mcp-demo.png)
@@ -37,9 +57,18 @@ Executor: career_skill.execute()
 
 No API key is needed for this demo. With `JEV_API_KEY` set, it calls the real TypeSafe JEV API and the decision may differ.
 
+Run the new file-execution loop from the repository root:
+
+```bash
+python -m examples.controlled_agent_demo
+```
+
+The deterministic demo reads the actual `README.md`, creates `output/summary.md` inside the configured sandbox, and prints a structured trace. The generated `output/` directory is ignored by Git. It uses the local JEV mock by default and stays offline; pass `--real-jev` to use the configured `JEV_API_KEY`. If you run the demo again with an existing output file, the action waits for review; pass `--approve-existing` only when you intend to overwrite it. The tool execution itself is real.
+
 ## Features
 
 - Exposes JEV decisions, skill execution, and skill discovery as MCP tools.
+- Adds a permit-gated controlled Agent loop with local sandbox file tools, explicit review, and a machine-readable trace.
 - Uses the TypeSafe JEV API when `JEV_API_KEY` is configured and validates that each returned choice is allowed.
 - Uses a deterministic local mock without a key, so the project can be tried without external credentials.
 - Includes a FastAPI service, Docker packaging, and demo scripts alongside the MCP server.
@@ -113,7 +142,7 @@ Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) for interactive AP
 
 ## MCP
 
-MCP (Model Context Protocol) provides a standard way for AI clients to connect with external tools and services. This MCP server exposes `jev_decide`, `agent_run`, and `list_skills`.
+MCP (Model Context Protocol) provides a standard way for AI clients to connect with external tools and services. This MCP server exposes `jev_decide`, `agent_run`, `list_skills`, `controlled_agent_run`, and `approve_action`.
 
 Install the dependencies, then add the following server entry to your MCP host configuration. Start the host with the repository root as its working directory so Python can import `src`.
 
@@ -136,8 +165,10 @@ You can also copy [`mcp.json.example`](mcp.json.example) as a starting point. Fo
 | `jev_decide` | Choose from caller-provided options using JEV. |
 | `agent_run` | Select a registered skill, execute it, and return the decision and result. |
 | `list_skills` | List the skills registered on this server. |
+| `controlled_agent_run` | Run local file actions through deterministic policy, JEV Choice, permits, and the sandbox executor. |
+| `approve_action` | Approve and resume one action returned with `approval_required`. |
 
-The MCP connector has been tested with Doubao Desktop and Antigravity. See [MCP Client Compatibility](docs/mcp-clients.md) for the validated interactions. Each user runs their own local MCP server; this project does not provide a shared remote MCP service or JEV quota.
+The v0.2.1 MCP connector was tested with Doubao Desktop and Antigravity. The new controlled tools have automated FastMCP coverage but have not yet been manually validated in those clients. See [MCP Client Compatibility](docs/mcp-clients.md) for details. Each user runs their own local MCP server; this project does not provide a shared remote MCP service or JEV quota.
 
 ### Use the real JEV API
 
@@ -198,6 +229,8 @@ In mock mode, the response contains the selected skill and execution result. The
 | `POST` | `/route/skill` | Route a task to a built-in skill. |
 | `POST` | `/route/agent` | Route a task to an agent. |
 | `POST` | `/api/v1/agent/run` | Decide a skill and execute its workflow. |
+| `POST` | `/api/v1/controlled-agent/run` | Run actions through the controlled execution loop and return a trace. |
+| `POST` | `/api/v1/controlled-agent/{run_id}/approve` | Approve the matching action waiting for review. |
 
 ## Decision Routing Evaluation
 

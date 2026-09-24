@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+- Controlled local Agent loop with deterministic policy, JEV Choice decisions, explicit review approval, one-use execution permits, sandboxed tools, and structured traces.
+- FastMCP tools `controlled_agent_run` and `approve_action`, plus matching FastAPI endpoints.
+- Offline control-flow tests and a real local README-to-summary demonstration.
+
+### Fixed
+- Bind MCP approvals to both run and action IDs and redact file contents from public traces.
+- Stop tracking the generated `output/summary.md`; fresh CI checkouts create it during the controlled-agent smoke.
+
 ## [0.2.1] - 2026-09-25
 
 ### Fixed
