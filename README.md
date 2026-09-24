@@ -10,7 +10,7 @@ Originally built for Doubao MCP integration, now supports MCP-compatible clients
 
 Doubao-JEV-Agent is an MCP Server for Agent clients and Agent workflows. An MCP-compatible AI Agent supplies a task and allowed choices; JEV selects from those options, and the local executor runs the selected skill. The client remains responsible for the wider Agent workflow.
 
-The v0.3.0 development branch adds an optional controlled execution loop. JEV does not execute tools or replace the Agent; it sits at the decision boundary between an action proposal and local tool execution.
+v0.3.0 adds an optional controlled execution loop. JEV does not execute tools or replace the Agent; it sits at the decision boundary between an action proposal and local tool execution.
 
 ```mermaid
 flowchart TD
@@ -238,7 +238,7 @@ See the [Decision Routing Evaluation](benchmark/results.md). Run `python benchma
 
 ## Roadmap
 
-The latest published release is [v0.2.1](https://github.com/qinpei-dev/Doubao-jev-agent/releases/tag/v0.2.1). It provides the MCP decision layer, local demo workflows, an HTTP API, and offline decision-routing evaluation. Possible future work includes more MCP host examples; no delivery dates are committed.
+The latest release is [v0.3.0](https://github.com/qinpei-dev/Doubao-jev-agent/releases/tag/v0.3.0). It adds the controlled Agent execution loop to the MCP decision layer, local demo workflows, HTTP API, and offline decision-routing evaluation. Possible future work includes more MCP host examples; no delivery dates are committed.
 
 ## Docker
 

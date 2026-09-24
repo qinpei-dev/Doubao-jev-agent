@@ -18,7 +18,7 @@ Discovered tools:
 - `agent_run`
 - `list_skills`
 
-These client-side checks covered the v0.2.1 tools. The v0.3 development branch adds `controlled_agent_run` and `approve_action`; these new tools have automated FastMCP coverage but have not yet been manually validated in Doubao Desktop or Antigravity.
+These client-side checks covered the v0.2.1 tools. v0.3.0 adds `controlled_agent_run` and `approve_action`; these tools have automated FastMCP coverage but have not yet been manually validated in Doubao Desktop or Antigravity.
 
 See [Doubao Desktop MCP Setup](doubao-mcp.md) for local configuration.
 

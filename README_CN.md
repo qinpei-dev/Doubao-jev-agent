@@ -8,7 +8,7 @@
 
 Doubao-JEV-Agent 以 MCP Server 的形式服务于 Agent 客户端及其工作流。MCP-compatible AI Agent 提交任务和允许选择的选项，JEV 从中作出选择，再由本地 Skill Executor 执行选中的技能。完整的 Agent 工作流仍由客户端负责。本项目不是 AI Agent Framework。
 
-v0.3.0 开发分支新增可选的受控执行循环。JEV 不执行工具，也不替代 Agent；它位于 Action Proposal 与本地工具执行之间的决策边界。
+v0.3.0 新增可选的受控执行循环。JEV 不执行工具，也不替代 Agent；它位于 Action Proposal 与本地工具执行之间的决策边界。
 
 ```mermaid
 flowchart TD
@@ -240,7 +240,7 @@ curl -X POST http://127.0.0.1:8000/api/v1/agent/run \
 
 ## 路线图
 
-最新发布版本为 [v0.2.1](https://github.com/qinpei-dev/Doubao-jev-agent/releases/tag/v0.2.1)，包括 MCP 决策层、本地模拟工作流、HTTP API 和离线决策路由评估。未来可能增加更多 MCP host 配置示例，但尚未承诺交付日期。
+最新发布版本为 [v0.3.0](https://github.com/qinpei-dev/Doubao-jev-agent/releases/tag/v0.3.0)，在 MCP 决策层、本地模拟工作流、HTTP API 和离线决策路由评估基础上增加受控 Agent 执行循环。未来可能增加更多 MCP host 配置示例，但尚未承诺交付日期。
 
 ## Docker
 
