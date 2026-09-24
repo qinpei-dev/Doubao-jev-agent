@@ -1,4 +1,4 @@
-# Doubao-JEV-Agent
+# PermitMCP
 
 [English](README.md) | [中文](README_CN.md)
 
@@ -31,9 +31,11 @@ Showcase 使用现有控制链和离线 JEV mock，针对临时沙箱内的真�
 
 ## Quick Start
 
-需要 Python 3.11 或更新版本。在仓库根目录运行：
+需要 Python 3.11 或更新版本。克隆 [PermitMCP](https://github.com/qinpei-dev/permit-mcp) 后，在仓库根目录运行：
 
 ```bash
+git clone https://github.com/qinpei-dev/permit-mcp.git
+cd permit-mcp
 pip install -r requirements.txt
 python -m examples.showcase
 ```
@@ -79,7 +81,7 @@ MCP 客户端提供任务和允许的选项。JEV 返回选择，系统在路由
 
 ## 架构
 
-![Doubao-JEV-Agent 架构图](docs/images/architecture.png)
+![PermitMCP 架构图](docs/images/architecture.png)
 
 MCP 负责通信；JEV 根据客户端允许的选项作出结构化决策；Skill Router 找到已注册的技能；Skill Executor 运行相应的本地工作流。
 
@@ -92,7 +94,7 @@ MCP（Model Context Protocol）为 AI 客户端连接外部工具与服务提供
 ```json
 {
   "mcpServers": {
-    "doubao-jev-agent": {
+    "permit-mcp": {
       "command": "python",
       "args": ["-m", "src.mcp.server"],
       "env": {}
@@ -222,7 +224,7 @@ curl -X POST http://127.0.0.1:8000/api/v1/agent/run \
 
 ## 路线图
 
-最新发布版本为 [v0.3.0](https://github.com/qinpei-dev/Doubao-jev-agent/releases/tag/v0.3.0)，在 MCP 决策层、本地模拟工作流、HTTP API 和离线决策路由评估基础上增加受控 Agent 执行循环。未来可能增加更多 MCP host 配置示例，但尚未承诺交付日期。
+最新发布版本为 [v0.3.0](https://github.com/qinpei-dev/permit-mcp/releases/tag/v0.3.0)，在 MCP 决策层、本地模拟工作流、HTTP API 和离线决策路由评估基础上增加受控 Agent 执行循环。未来可能增加更多 MCP host 配置示例，但尚未承诺交付日期。
 
 ## Docker
 

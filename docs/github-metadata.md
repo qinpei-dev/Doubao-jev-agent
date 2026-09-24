@@ -9,6 +9,6 @@ Recommended repository Topics:
 - `decision-routing`
 - `python`
 - `jev`
-- `doubao`
+- `execution-control`
 
 These are suggestions for the repository settings; this document does not change GitHub Topics automatically.

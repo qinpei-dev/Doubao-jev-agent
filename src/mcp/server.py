@@ -1,4 +1,4 @@
-"""Run the Doubao JEV Agent MCP server over stdio."""
+"""Run the PermitMCP MCP server over stdio."""
 from .tools import create_mcp_server
 
 mcp = create_mcp_server()

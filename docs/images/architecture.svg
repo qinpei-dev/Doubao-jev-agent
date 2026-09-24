@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200" role="img" aria-labelledby="title desc">
-  <title id="title">Doubao-JEV-Agent architecture</title>
-  <desc id="desc">AI Client / Agent flows through MCP Protocol, Doubao-JEV-Agent MCP Server, JEV Decision Layer, Skill Router, and Execution Layer.</desc>
+  <title id="title">PermitMCP architecture</title>
+  <desc id="desc">AI Client / Agent flows through MCP Protocol, PermitMCP MCP Server, JEV Decision Layer, Skill Router, and Execution Layer.</desc>
   <rect width="1200" height="1200" fill="#ffffff"/>
-  <text x="600" y="86" text-anchor="middle" fill="#1f2328" font-family="Segoe UI, Arial, sans-serif" font-size="46" font-weight="700">Doubao-JEV-Agent Architecture</text>
+  <text x="600" y="86" text-anchor="middle" fill="#1f2328" font-family="Segoe UI, Arial, sans-serif" font-size="46" font-weight="700">PermitMCP Architecture</text>
   <line x1="180" y1="116" x2="1020" y2="116" stroke="#d8dee4" stroke-width="2"/>
 
   <g fill="#ffffff" stroke="#d0d7de" stroke-width="3">
@@ -17,7 +17,7 @@
   <g fill="#1f2328" font-family="Segoe UI, Arial, sans-serif" font-size="38" font-weight="600" text-anchor="middle" dominant-baseline="middle">
     <text x="600" y="205">AI Client / Agent</text>
     <text x="600" y="377">MCP Protocol</text>
-    <text x="600" y="549">Doubao-JEV-Agent MCP Server</text>
+    <text x="600" y="549">PermitMCP MCP Server</text>
     <text x="600" y="721">JEV Decision Layer</text>
     <text x="600" y="893">Skill Router</text>
     <text x="600" y="1065">Execution Layer</text>

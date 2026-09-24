@@ -1,1 +1,1 @@
-"""MCP server integration for Doubao JEV Agent."""
+"""MCP server integration for PermitMCP."""

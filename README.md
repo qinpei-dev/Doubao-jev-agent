@@ -1,4 +1,4 @@
-# Doubao-JEV-Agent
+# PermitMCP
 
 [English](README.md) | [中文](README_CN.md)
 
@@ -31,9 +31,11 @@ Policy `DENY` stops before JEV. Policy `REVIEW` waits for caller approval. `ALLO
 
 ## Quick Start
 
-Requires Python 3.11 or later. From the repository root:
+Requires Python 3.11 or later. Clone [PermitMCP](https://github.com/qinpei-dev/permit-mcp) and run from the repository root:
 
 ```bash
+git clone https://github.com/qinpei-dev/permit-mcp.git
+cd permit-mcp
 pip install -r requirements.txt
 python -m examples.showcase
 ```
@@ -79,7 +81,7 @@ The MCP client provides the task and allowed choices. JEV returns a choice that 
 
 ## Architecture
 
-![Doubao-JEV-Agent architecture diagram](docs/images/architecture.png)
+![PermitMCP architecture diagram](docs/images/architecture.png)
 
 MCP handles communication. JEV makes a structured decision from the client's allowed choices. The Skill Router selects the registered skill, and the executor runs its local workflow.
 
@@ -92,7 +94,7 @@ Install the dependencies, then add the following server entry to your MCP host c
 ```json
 {
   "mcpServers": {
-    "doubao-jev-agent": {
+    "permit-mcp": {
       "command": "python",
       "args": ["-m", "src.mcp.server"],
       "env": {}
@@ -218,7 +220,7 @@ See the [Decision Routing Evaluation](benchmark/results.md). Run `python benchma
 
 ## Roadmap
 
-The latest release is [v0.3.0](https://github.com/qinpei-dev/Doubao-jev-agent/releases/tag/v0.3.0). It adds the controlled Agent execution loop to the MCP decision layer, local demo workflows, HTTP API, and offline decision-routing evaluation. Possible future work includes more MCP host examples; no delivery dates are committed.
+The latest release is [v0.3.0](https://github.com/qinpei-dev/permit-mcp/releases/tag/v0.3.0). It adds the controlled Agent execution loop to the MCP decision layer, local demo workflows, HTTP API, and offline decision-routing evaluation. Possible future work includes more MCP host examples; no delivery dates are committed.
 
 ## Docker
 

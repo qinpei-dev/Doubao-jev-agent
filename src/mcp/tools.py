@@ -43,7 +43,7 @@ def register_tools(
 
     @server.tool()
     def list_skills() -> list[str]:
-        """List skill names supported by this Doubao JEV Agent instance."""
+        """List skill names supported by this PermitMCP instance."""
         return [skill.name for skill in registry.list()]
 
     @server.tool()
@@ -66,7 +66,7 @@ def create_mcp_server(
     """Create the MCP server, defaulting to the environment-selected JEV client."""
     from ..jev.client import JEVClient as ClientFactory
 
-    server = FastMCP("doubao-jev-agent")
+    server = FastMCP("PermitMCP")
     engine = DecisionEngine(client or ClientFactory.from_env())
     controlled_agent = ControlledAgentRunner(
         engine, sandbox_root or Path.cwd(), DeterministicDemoAgent()

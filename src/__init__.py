@@ -1,1 +1,1 @@
-"""Doubao JEV Agent package."""
+"""PermitMCP package."""

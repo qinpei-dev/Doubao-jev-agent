@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Install Python 3.11 or later and clone this repository.
+- Install Python 3.11 or later and clone [PermitMCP](https://github.com/qinpei-dev/permit-mcp).
 - From the repository root, create and activate a virtual environment, then run `pip install -r requirements.txt`.
 - Have a Doubao Desktop version that supports custom MCP connectors. The exact menu labels may vary by version.
 
@@ -23,7 +23,7 @@
 5. Set the working directory to the absolute path of your cloned repository. For example, on Windows:
 
    ```text
-   D:\projects\Doubao-jev-agent
+   D:\projects\permit-mcp
    ```
 
    Python must start in this directory so it can import `src`. Select the `python` executable from the virtual environment if Doubao Desktop does not inherit your activated environment.
@@ -34,7 +34,7 @@ The equivalent MCP server configuration is:
 ```json
 {
   "mcpServers": {
-    "doubao-jev-agent": {
+    "permit-mcp": {
       "command": "python",
       "args": ["-m", "src.mcp.server"],
       "env": {}

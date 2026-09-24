@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "doubao-jev-agent": {
+    "permit-mcp": {
       "command": "python",
       "args": ["-m", "src.mcp.server"],
       "env": {}

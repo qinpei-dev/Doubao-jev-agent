@@ -19,7 +19,7 @@ def test_mcp_server_registers_expected_tools():
     assert {tool.name for tool in tools} == {
         "jev_decide", "agent_run", "list_skills", "controlled_agent_run", "approve_action"
     }
-    assert server.name == "doubao-jev-agent"
+    assert server.name == "PermitMCP"
 
 
 def test_mcp_tools_run_in_mock_mode():
