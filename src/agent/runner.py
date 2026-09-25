@@ -8,6 +8,7 @@ from collections.abc import Sequence
 from typing import Protocol
 from uuid import uuid4
 
+from ..control.chain import ControlChain, ControlResult
 from ..control.controller import DecisionController
 from ..control.models import (
     ActionProposal,
@@ -16,15 +17,13 @@ from ..control.models import (
     AgentTrace,
     ControlDecision,
     ControlledAgentRunRequest,
-    DecisionOutcome,
     Observation,
     PolicyResult,
-    PolicyStatus,
 )
 from ..control.permits import ExecutionPermitAuthority
 from ..control.policy import DeterministicPolicy
 from ..core.decision import DecisionEngine
-from ..tools.executor import PolicyDenied, ReviewRequired, SandboxToolExecutor
+from ..tools.executor import SandboxToolExecutor
 
 
 class AgentPlanner(Protocol):
@@ -56,16 +55,26 @@ class ControlledAgentRunner:
 
     def __init__(
         self,
-        engine: DecisionEngine,
+        engine: DecisionEngine | None,
         sandbox_root: str | Path,
         planner: AgentPlanner,
         minimum_confidence: float = 0.5,
+        control_chain: ControlChain | None = None,
     ):
         self.planner = planner
-        self.policy = DeterministicPolicy(sandbox_root)
-        self.permit_authority = ExecutionPermitAuthority()
-        self.controller = DecisionController(engine, self.policy, minimum_confidence)
-        self.executor = SandboxToolExecutor(self.policy, self.permit_authority)
+        if control_chain is None:
+            policy = DeterministicPolicy(sandbox_root)
+            permits = ExecutionPermitAuthority()
+            control_chain = ControlChain(
+                DecisionController(engine, policy, minimum_confidence, policy.decision_arguments),
+                permits,
+                SandboxToolExecutor(policy, permits),
+            )
+        self.control_chain = control_chain
+        self.policy = control_chain.policy
+        self.permit_authority = control_chain.permits
+        self.controller = control_chain.controller
+        self.executor = control_chain.executor
         self._pending: dict[tuple[str, str], _PendingApproval] = {}
 
     async def run(self, task: str, max_steps: int = 5) -> AgentTrace:
@@ -82,103 +91,35 @@ class ControlledAgentRunner:
 
     async def approve_action(self, action_id: str, run_id: str) -> AgentTrace:
         key = (run_id, action_id)
-        pending = self._pending.get(key)
+        pending = self._pending.pop(key, None)
         if pending is None:
             raise ApprovalError("no pending action matches this approval")
-        # Remove before awaiting anything: concurrent/replayed approvals cannot
-        # execute the same action twice.
-        del self._pending[key]
+        # Remove before execution: replayed or concurrent approvals cannot run twice.
         if pending.proposal is None or pending.decision is None or pending.policy_result is None:
             raise ApprovalError("pending action state is incomplete")
         if pending.proposal.digest() != pending.proposal_digest:
             raise ApprovalError("the action changed after review; its approval is invalid")
-        current_policy = self.policy.check(pending.proposal)
-        if current_policy.status == PolicyStatus.DENY:
-            step = pending.steps[-1]
-            step.execution_status = "blocked"
-            step.policy_result = current_policy
-            step.decision = ControlDecision(
-                action_id=action_id,
-                proposal_digest=pending.proposal.digest(),
-                outcome=DecisionOutcome.DENY,
-                reason=current_policy.reason,
-                source="policy",
-            )
-            step.observation = Observation(status="blocked", output=current_policy.reason, error=current_policy.reason)
-            return self._trace(pending, "blocked", stop_reason=current_policy.reason)
-        if (
-            current_policy.status == PolicyStatus.REVIEW
-            and pending.policy_result.status != PolicyStatus.REVIEW
-        ):
-            refreshed_decision = ControlDecision(
-                action_id=action_id,
-                proposal_digest=pending.proposal.digest(),
-                outcome=DecisionOutcome.REVIEW,
-                confidence=pending.decision.confidence,
-                reason=current_policy.reason,
-                source="policy",
-            )
-            pending.policy_result = current_policy
-            pending.decision = refreshed_decision
-            step = pending.steps[-1]
-            step.policy_result = current_policy
-            step.decision = refreshed_decision
-            step.execution_status = "approval_required"
+        reviewed = ControlResult("review", pending.policy_result, pending.decision)
+        try:
+            result = self.control_chain.approve(pending.proposal, reviewed)
+        except ValueError as exc:
+            raise ApprovalError(str(exc)) from exc
+        step = pending.steps[-1]
+        self._fill_step(step, result)
+        if result.status == "review":
+            pending.policy_result = result.policy_result
+            pending.decision = result.decision
             self._pending[key] = pending
             return self._trace(
-                pending,
-                "approval_required",
+                pending, "approval_required",
                 stop_reason="filesystem risk changed; review the updated policy result",
-                pending_action=pending.proposal,
-                pending_decision=refreshed_decision,
+                pending_action=pending.proposal, pending_decision=result.decision,
             )
-
-        approval_decision = ControlDecision(
-            action_id=action_id,
-            proposal_digest=pending.proposal.digest(),
-            outcome=DecisionOutcome.REVIEW,
-            confidence=pending.decision.confidence,
-            reason="caller explicitly approved the reviewed action",
-            source="caller",
-        )
-        permit = None
-        try:
-            permit = self.permit_authority.issue(pending.proposal, approval_decision, "caller")
-            tool_result = self.executor.execute(pending.proposal, permit)
-        except PolicyDenied as exc:
-            if permit is not None:
-                self.permit_authority.revoke(permit)
-            step = pending.steps[-1]
-            policy_result = self.policy.check(pending.proposal)
-            step.policy_result = policy_result
-            step.decision = ControlDecision(
-                action_id=action_id,
-                proposal_digest=pending.proposal.digest(),
-                outcome=DecisionOutcome.DENY,
-                confidence=pending.decision.confidence,
-                reason=str(exc),
-                source="policy",
-            )
-            step.execution_status = "blocked"
-            step.observation = Observation(status="blocked", output=str(exc), error=str(exc))
-            return self._trace(pending, "blocked", stop_reason=str(exc))
-        except Exception as exc:
-            if permit is not None:
-                self.permit_authority.revoke(permit)
-            step = pending.steps[-1]
-            step.execution_status = "error"
-            step.error = str(exc)
-            step.observation = Observation(status="error", error=str(exc))
+        if result.status == "blocked":
+            return self._trace(pending, "blocked", stop_reason=result.decision.reason)
+        if result.status == "error":
             return self._trace(pending, "failed", stop_reason="approved action failed during execution")
-
-        observation = Observation(status="success", output=tool_result.output)
-        pending.history.append(observation)
-        step = pending.steps[-1]
-        step.permit = permit
-        step.execution_status = "success"
-        step.tool_result = tool_result
-        step.observation = observation
-        # Continue with the same planner history and budget after the approved step.
+        pending.history.append(step.observation)
         return await self._run_loop(pending, pending.step_number + 1)
 
     async def _run_loop(self, state: _PendingApproval, start_step: int) -> AgentTrace:
@@ -218,169 +159,33 @@ class ControlledAgentRunner:
                 return self._trace(state, "failed", stop_reason="duplicate action_id")
 
             try:
-                policy_result, decision = await self.controller.decide(proposed)
+                result = await self.control_chain.run(proposed)
             except Exception as exc:
                 state.steps.append(
                     AgentStep(
-                        step=step_number,
-                        proposal=proposed,
-                        execution_status="error",
-                        error=str(exc),
+                        step=step_number, proposal=proposed,
+                        execution_status="error", error=str(exc),
                         observation=Observation(status="error", error=str(exc)),
                     )
                 )
-                return self._trace(state, "failed", stop_reason="decision controller failed")
+                return self._trace(state, "failed", stop_reason="control chain failed")
 
-            if (
-                decision.action_id != proposed.action_id
-                or decision.proposal_digest != proposed.digest()
-            ):
-                state.steps.append(
-                    AgentStep(
-                        step=step_number,
-                        proposal=proposed,
-                        policy_result=policy_result,
-                        decision=decision,
-                        execution_status="error",
-                        error="control decision is not bound to this proposal",
-                    )
-                )
-                return self._trace(state, "failed", stop_reason="action binding validation failed")
-
-            if decision.outcome == DecisionOutcome.DENY:
-                observation = Observation(status="blocked", output=decision.reason, error=decision.reason)
-                state.steps.append(
-                    AgentStep(
-                        step=step_number,
-                        proposal=proposed,
-                        policy_result=policy_result,
-                        decision=decision,
-                        execution_status="blocked",
-                        observation=observation,
-                    )
-                )
-                state.history.append(observation)
-                continue
-
-            if decision.outcome == DecisionOutcome.REVIEW:
-                state.steps.append(
-                    AgentStep(
-                        step=step_number,
-                        proposal=proposed,
-                        policy_result=policy_result,
-                        decision=decision,
-                        execution_status="approval_required",
-                    )
-                )
+            step = AgentStep(step=step_number, proposal=proposed, execution_status="blocked")
+            self._fill_step(step, result)
+            state.steps.append(step)
+            if result.status == "review":
                 state.step_number = step_number
                 state.proposal = proposed
                 state.proposal_digest = proposed.digest()
-                state.policy_result = policy_result
-                state.decision = decision
+                state.policy_result = result.policy_result
+                state.decision = result.decision
                 self._pending[(state.run_id, proposed.action_id)] = state
                 return self._trace(
-                    state,
-                    "approval_required",
+                    state, "approval_required",
                     stop_reason="explicit approval is required before execution",
-                    pending_action=proposed,
-                    pending_decision=decision,
+                    pending_action=proposed, pending_decision=result.decision,
                 )
-
-            permit = None
-            try:
-                permit = self.permit_authority.issue(proposed, decision, "jev")
-                tool_result = self.executor.execute(proposed, permit)
-            except ReviewRequired as exc:
-                if permit is not None:
-                    self.permit_authority.revoke(permit)
-                refreshed_policy = self.policy.check(proposed)
-                review_decision = ControlDecision(
-                    action_id=proposed.action_id,
-                    proposal_digest=proposed.digest(),
-                    outcome=DecisionOutcome.REVIEW,
-                    confidence=decision.confidence,
-                    reason=str(exc),
-                    source="policy",
-                )
-                state.steps.append(
-                    AgentStep(
-                        step=step_number,
-                        proposal=proposed,
-                        policy_result=refreshed_policy,
-                        decision=review_decision,
-                        execution_status="approval_required",
-                    )
-                )
-                state.step_number = step_number
-                state.proposal = proposed
-                state.proposal_digest = proposed.digest()
-                state.policy_result = refreshed_policy
-                state.decision = review_decision
-                self._pending[(state.run_id, proposed.action_id)] = state
-                return self._trace(
-                    state,
-                    "approval_required",
-                    stop_reason="filesystem risk changed before execution",
-                    pending_action=proposed,
-                    pending_decision=review_decision,
-                )
-            except PolicyDenied as exc:
-                if permit is not None:
-                    self.permit_authority.revoke(permit)
-                policy_result = self.policy.check(proposed)
-                deny_decision = ControlDecision(
-                    action_id=proposed.action_id,
-                    proposal_digest=proposed.digest(),
-                    outcome=DecisionOutcome.DENY,
-                    confidence=decision.confidence,
-                    reason=str(exc),
-                    source="policy",
-                )
-                blocked_observation = Observation(status="blocked", output=str(exc), error=str(exc))
-                state.steps.append(
-                    AgentStep(
-                        step=step_number,
-                        proposal=proposed,
-                        policy_result=policy_result,
-                        decision=deny_decision,
-                        execution_status="blocked",
-                        observation=blocked_observation,
-                    )
-                )
-                state.history.append(blocked_observation)
-                continue
-            except Exception as exc:
-                if permit is not None:
-                    self.permit_authority.revoke(permit)
-                failure_observation = Observation(status="error", error=str(exc))
-                state.steps.append(
-                    AgentStep(
-                        step=step_number,
-                        proposal=proposed,
-                        policy_result=policy_result,
-                        decision=decision,
-                        execution_status="error",
-                        error=str(exc),
-                        observation=failure_observation,
-                    )
-                )
-                state.history.append(failure_observation)
-                continue
-
-            observation = Observation(status="success", output=tool_result.output)
-            state.history.append(observation)
-            state.steps.append(
-                AgentStep(
-                    step=step_number,
-                    proposal=proposed,
-                    policy_result=policy_result,
-                    decision=decision,
-                    permit=permit,
-                    execution_status="success",
-                    tool_result=tool_result,
-                    observation=observation,
-                )
-            )
+            state.history.append(step.observation)
 
         # Check whether the planner has finished after using its action budget.
         try:
@@ -411,6 +216,23 @@ class ControlledAgentRunner:
             )
         )
         return self._trace(state, "blocked", stop_reason="max_steps reached")
+
+    @staticmethod
+    def _fill_step(step: AgentStep, result: ControlResult) -> None:
+        step.policy_result = result.policy_result
+        step.decision = result.decision
+        step.permit = result.permit
+        step.tool_result = result.tool_result
+        step.execution_status = "approval_required" if result.status == "review" else result.status
+        step.error = result.error
+        if result.status == "success":
+            step.observation = Observation(status="success", output=result.tool_result.output)
+        elif result.status == "blocked":
+            step.observation = Observation(
+                status="blocked", output=result.decision.reason, error=result.decision.reason
+            )
+        elif result.status == "error":
+            step.observation = Observation(status="error", error=result.error)
 
     @staticmethod
     def _trace(

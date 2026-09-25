@@ -1,28 +1,40 @@
-"""Application-layer ALLOW / REVIEW / DENY decisions based on JEV Choice."""
+"""Policy-first ALLOW / REVIEW / DENY decisions with an optional provider."""
 
 import json
+from collections.abc import Callable
+from typing import Any, Protocol
 
-from ..core.decision import DecisionEngine
 from .models import ActionProposal, ControlDecision, DecisionOutcome, PolicyResult, PolicyStatus
-from .policy import DeterministicPolicy
+
+
+class DecisionProvider(Protocol):
+    async def decide(self, task: str, options: list[str]): ...
+
+
+class Policy(Protocol):
+    def check(self, proposal: ActionProposal) -> PolicyResult: ...
 
 
 class DecisionController:
-    """Apply deterministic policy first, then ask JEV for a structured choice."""
+    """Apply deterministic policy first, then optionally ask for a structured choice."""
 
     outcomes = [DecisionOutcome.ALLOW.value, DecisionOutcome.REVIEW.value, DecisionOutcome.DENY.value]
 
     def __init__(
         self,
-        engine: DecisionEngine,
-        policy: DeterministicPolicy,
+        engine: DecisionProvider | None,
+        policy: Policy,
         minimum_confidence: float = 0.5,
+        argument_view: Callable[[ActionProposal], dict[str, Any]] | None = None,
     ):
         if not 0 <= minimum_confidence <= 1:
             raise ValueError("minimum_confidence must be between 0 and 1")
         self.engine = engine
         self.policy = policy
         self.minimum_confidence = minimum_confidence
+        self.argument_view = argument_view or getattr(
+            policy, "decision_arguments", lambda proposal: dict(proposal.arguments)
+        )
 
     async def decide(self, proposal: ActionProposal) -> tuple[PolicyResult, ControlDecision]:
         proposal_digest = proposal.digest()
@@ -44,15 +56,19 @@ class DecisionController:
                 source="policy",
             )
 
-        # Do not send proposed write content to the external decision API.
-        safe_arguments = dict(proposal.arguments)
-        if proposal.tool == "write_file":
-            content = safe_arguments.pop("content")
-            safe_arguments["content_length"] = len(content)
+        if self.engine is None:
+            return policy_result, ControlDecision(
+                action_id=proposal.action_id,
+                proposal_digest=proposal_digest,
+                outcome=DecisionOutcome.ALLOW,
+                reason=policy_result.reason,
+                source="policy",
+            )
+
         context = {
             "action_id": proposal.action_id,
             "tool": proposal.tool,
-            "arguments": safe_arguments,
+            "arguments": self.argument_view(proposal),
             "description": proposal.description,
             "system_risk_context": policy_result.risk_context,
         }

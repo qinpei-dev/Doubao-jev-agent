@@ -6,18 +6,9 @@ from pathlib import Path
 from shutil import which
 
 from ..control.models import ActionProposal, ExecutionPermit, ToolResult
+from ..control.errors import PolicyDenied, ReviewRequired
 from ..control.permits import ExecutionPermitAuthority
 from ..control.policy import DeterministicPolicy
-
-
-class ReviewRequired(PermissionError):
-    def __init__(self, reason: str):
-        super().__init__(reason)
-
-
-class PolicyDenied(PermissionError):
-    def __init__(self, reason: str):
-        super().__init__(reason)
 
 
 class SandboxToolRegistry:

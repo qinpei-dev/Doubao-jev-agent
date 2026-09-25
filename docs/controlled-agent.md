@@ -1,6 +1,6 @@
 # Controlled Agent
 
-v0.3.0 adds a small local execution loop. It does not turn the project into an Agent framework: the bundled planner is deterministic and demonstrates one task, while callers may supply another `AgentPlanner` implementation.
+The local execution loop uses a reusable, single-call `ControlChain`. The bundled planner is deterministic and demonstrates one task, while callers may supply another `AgentPlanner` implementation.
 
 ## Architecture
 
@@ -8,31 +8,31 @@ v0.3.0 adds a small local execution loop. It does not turn the project into an A
 MCP Client / HTTP caller
   -> Deterministic Agent Planner
   -> ActionProposal
-  -> DeterministicPolicy
-  -> DecisionController -> JEV Choice
+  -> ControlChain: DeterministicPolicy
+  -> optional DecisionController provider
   -> ALLOW / REVIEW / DENY
   -> one-use ExecutionPermit
   -> SandboxToolExecutor -> Observation
   -> Agent Planner
 ```
 
-JEV does not execute tools and does not replace the Agent. The `allow`, `review`, and `deny` outcomes are this application's interpretation of a TypeSafe Choice result, not a separate TypeSafe Gate primitive. The deterministic policy runs first and may deny or require review without calling JEV.
+JEV does not execute tools and does not replace the Agent. The `allow`, `review`, and `deny` outcomes are this application's interpretation of a TypeSafe Choice result, not a separate TypeSafe Gate primitive. The deterministic policy runs first and may deny or require review without calling a provider. With no provider, policy `PASS` permits execution. The legacy skill-routing mock is disabled for control in the shared adapter composition.
 
 The v0.2.1 `jev_decide`, `agent_run`, and `list_skills` tools remain available for compatibility. The new controlled path is exposed through `controlled_agent_run` and `approve_action`; both MCP and HTTP adapters call the same `ControlledAgentRunner` service.
 
 ## Action lifecycle
 
-1. The planner returns an `ActionProposal` with an action ID, registered tool name, arguments, description, and optional caller-supplied risk context.
-2. Pydantic validates the tool and argument shape. The policy independently derives risk from the registered tool and filesystem state; it does not trust the proposal's `risk_context`.
+1. The planner returns an `ActionProposal` with an action ID, generic tool name, arguments, description, and optional caller-supplied risk context.
+2. The generic proposal model retains canonical JSON digest binding. The sandbox policy validates its four supported tool names and argument shapes, then derives risk from the filesystem state; it does not trust the proposal's `risk_context`.
 3. Absolute paths, traversal, resolved paths outside the configured root, and commands outside the exact allowlist are denied before JEV.
-4. Writing an existing file returns `approval_required`. Other policy-passing actions are sent to JEV as a Choice among `allow`, `review`, and `deny`. Proposed write content is not included in that Choice request.
+4. Writing an existing file returns `approval_required`. Other policy-passing actions are sent to the configured decision provider, if present, as a Choice among `allow`, `review`, and `deny`. Proposed write content is not included in that Choice request.
 5. Only an `allow` or an explicit approval of a reviewed action can receive a permit. Denied or invalid decisions cannot reach the executor.
 6. The executor rechecks policy, checks and consumes the permit once, invokes the fixed tool registry, and returns a typed result. The result becomes an observation for the planner.
 7. Successful results, policy denials, and tool errors are passed back as observations. The planner may finish or propose another action; review pauses for approval. The runner also enforces `max_steps` (default 5, maximum 20).
 
 ## Permit model
 
-`ExecutionPermit` binds the proposal's `action_id`, tool, decision, approval source, and SHA-256 digest of the complete proposal. `ExecutionPermitAuthority` keeps issued permit IDs in process memory and removes them on successful consumption. Reusing a permit, changing the action, using a permit for another action, or omitting the permit is rejected. Approval is also bound to one pending action ID and is removed before the runner awaits resumed work.
+`ExecutionPermit` binds the proposal's `action_id`, tool, decision, approval source, SHA-256 digest of the complete proposal, and explicit expiry. The default permit TTL is one minute. `ExecutionPermitAuthority` keeps issued permit IDs in process memory and removes them on consumption or expiry. Reusing a permit, changing the action, using a permit for another action, extending its expiry, or omitting the permit is rejected. Approval is also bound to one pending action ID and is removed before the runner resumes work.
 
 ## Review flow
 
@@ -59,7 +59,7 @@ Run the no-key example from the repository root:
 python -m examples.controlled_agent_demo
 ```
 
-It reads the actual README, creates a deterministic short summary, creates `output/summary.md`, and prints a machine-readable trace. The generated `output/` directory is ignored by Git. It uses `MockJEVClient` and stays offline by default. Add `--real-jev` to use TypeSafe JEV with the configured `JEV_API_KEY`. On later runs, an existing destination waits for review; pass `--approve-existing` only to explicitly approve that overwrite.
+It reads the actual README, creates a deterministic short summary, creates `output/summary.md`, and prints a machine-readable trace. The generated `output/` directory is ignored by Git. It runs control without a provider and stays offline by default. Add `--real-jev` to use TypeSafe JEV with the configured `JEV_API_KEY`. On later runs, an existing destination waits for review; pass `--approve-existing` only to explicitly approve that overwrite.
 
 The HTTP endpoints are:
 

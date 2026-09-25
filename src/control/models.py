@@ -9,7 +9,7 @@ from enum import Enum
 from typing import Any, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class DecisionOutcome(str, Enum):
@@ -24,7 +24,6 @@ class PolicyStatus(str, Enum):
     DENY = "deny"
 
 
-ToolName = Literal["list_files", "read_file", "write_file", "run_safe_command"]
 CONTROLLED_TOOL_NAMES = frozenset({"list_files", "read_file", "write_file", "run_safe_command"})
 SAFE_COMMANDS = frozenset({"python-version", "git-status", "git-diff-stat"})
 
@@ -35,7 +34,7 @@ class ActionProposal(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     action_id: str = Field(default_factory=lambda: str(uuid4()), min_length=1)
-    tool: ToolName
+    tool: str = Field(min_length=1)
     arguments: dict[str, Any]
     description: str = Field(min_length=1, max_length=500)
     # This is caller-supplied context only. Policy decisions use system-derived
@@ -56,25 +55,6 @@ class ActionProposal(BaseModel):
         if not value.strip():
             raise ValueError("description must not be blank")
         return value
-
-    @model_validator(mode="after")
-    def validate_tool_arguments(self) -> "ActionProposal":
-        args = self.arguments
-        schemas: dict[str, tuple[set[str], set[str]]] = {
-            "list_files": ({"path"}, set()),
-            "read_file": ({"path"}, {"path"}),
-            "write_file": ({"path", "content"}, {"path", "content"}),
-            "run_safe_command": ({"command"}, {"command"}),
-        }
-        accepted, required = schemas[self.tool]
-        if set(args) - accepted or required - set(args):
-            raise ValueError(f"invalid arguments for {self.tool}")
-        for key in ("path", "content", "command"):
-            if key in args and not isinstance(args[key], str):
-                raise ValueError(f"{key} must be a string")
-        if "path" in args and not args["path"].strip():
-            raise ValueError("path must not be blank")
-        return self
 
     def digest(self) -> str:
         canonical = json.dumps(
@@ -104,12 +84,13 @@ class ExecutionPermit(BaseModel):
 
     permit_id: str = Field(default_factory=lambda: str(uuid4()))
     action_id: str
-    tool: ToolName
+    tool: str
     decision: DecisionOutcome
     approved: bool
-    approval_source: Literal["jev", "caller"]
+    approval_source: Literal["jev", "policy", "caller"]
     proposal_digest: str
     issued_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: datetime
 
 
 class ToolResult(BaseModel):

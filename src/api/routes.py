@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException
 import httpx
 from pathlib import Path
-from ..agent import ApprovalError, ControlledAgentRunner, DeterministicDemoAgent
+from ..agent import ApprovalError, ControlledAgentRunner
+from ..composition import create_controlled_agent
 from ..core.models import DecisionRequest, DecisionResult, RouteRequest, RouteResult, AgentRouteResult, AgentRunRequest, AgentRunResult
 from ..control.models import ApprovalRequest, ControlledAgentRunRequest
 from ..core.decision import DecisionEngine
@@ -19,9 +20,7 @@ def build_router(
     registry = registry or create_default_registry()
     skills, agents = SkillRouter(engine), AgentRouter(engine)
     executor = SkillExecutor(registry)
-    controlled_agent = controlled_agent or ControlledAgentRunner(
-        engine, sandbox_root or Path.cwd(), DeterministicDemoAgent()
-    )
+    controlled_agent = controlled_agent or create_controlled_agent(engine, sandbox_root)
 
     @api.get("/health")
     async def health(): return {"status": "ok"}

@@ -1,5 +1,7 @@
 """In-memory, single-use permit authority bound to action content."""
 
+from datetime import datetime, timedelta, timezone
+
 from .models import ActionProposal, ControlDecision, DecisionOutcome, ExecutionPermit
 
 
@@ -8,8 +10,11 @@ class PermitError(PermissionError):
 
 
 class ExecutionPermitAuthority:
-    def __init__(self) -> None:
-        self._issued: dict[str, tuple[str, str, str, DecisionOutcome, str]] = {}
+    def __init__(self, ttl: timedelta = timedelta(minutes=1)) -> None:
+        if ttl <= timedelta(0):
+            raise ValueError("permit TTL must be positive")
+        self.ttl = ttl
+        self._issued: dict[str, tuple[str, str, str, DecisionOutcome, str, datetime]] = {}
 
     def issue(
         self,
@@ -23,8 +28,7 @@ class ExecutionPermitAuthority:
             raise PermitError("decision does not match the action contents")
         if (
             decision.outcome == DecisionOutcome.ALLOW
-            and decision.source == "jev"
-            and approval_source == "jev"
+            and (decision.source, approval_source) in {("jev", "jev"), ("policy", "policy")}
         ):
             approved = True
         elif (
@@ -36,6 +40,8 @@ class ExecutionPermitAuthority:
         else:
             raise PermitError("only an allowed decision or explicit caller approval can issue a permit")
 
+        issued_at = datetime.now(timezone.utc)
+        expires_at = issued_at + self.ttl
         permit = ExecutionPermit(
             action_id=proposal.action_id,
             tool=proposal.tool,
@@ -43,6 +49,8 @@ class ExecutionPermitAuthority:
             approved=approved,
             approval_source=approval_source,
             proposal_digest=proposal.digest(),
+            issued_at=issued_at,
+            expires_at=expires_at,
         )
         self._issued[permit.permit_id] = (
             proposal.action_id,
@@ -50,6 +58,7 @@ class ExecutionPermitAuthority:
             proposal.tool,
             decision.outcome,
             approval_source,
+            expires_at,
         )
         return permit
 
@@ -65,6 +74,7 @@ class ExecutionPermitAuthority:
             proposal.tool,
             permit.decision,
             permit.approval_source,
+            permit.expires_at,
         )
         if (
             issued is None
@@ -74,6 +84,9 @@ class ExecutionPermitAuthority:
             or permit.proposal_digest != proposal.digest()
         ):
             raise PermitError("permit is invalid or does not match this action")
+        if datetime.now(timezone.utc) >= permit.expires_at:
+            del self._issued[permit.permit_id]
+            raise PermitError("execution permit has expired")
         del self._issued[permit.permit_id]
 
     def revoke(self, permit: ExecutionPermit) -> None:

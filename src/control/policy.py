@@ -35,6 +35,22 @@ class DeterministicPolicy:
                 risk_context=risk,
             )
 
+        schemas = {
+            "list_files": ({"path"}, set()),
+            "read_file": ({"path"}, {"path"}),
+            "write_file": ({"path", "content"}, {"path", "content"}),
+            "run_safe_command": ({"command"}, {"command"}),
+        }
+        accepted, required = schemas[tool]
+        args = proposal.arguments
+        if set(args) - accepted or required - set(args):
+            return PolicyResult(status=PolicyStatus.DENY, reason=f"invalid arguments for {tool}", risk_context=risk)
+        for key in ("path", "content", "command"):
+            if key in args and not isinstance(args[key], str):
+                return PolicyResult(status=PolicyStatus.DENY, reason=f"{key} must be a string", risk_context=risk)
+        if "path" in args and not args["path"].strip():
+            return PolicyResult(status=PolicyStatus.DENY, reason="path must not be blank", risk_context=risk)
+
         if tool == "run_safe_command":
             command = proposal.arguments["command"]
             if command not in SAFE_COMMANDS:
@@ -81,6 +97,14 @@ class DeterministicPolicy:
             risk_context=risk,
             normalized_path=relative,
         )
+
+    @staticmethod
+    def decision_arguments(proposal: ActionProposal) -> dict:
+        """Hide sandbox write contents from an external decision provider."""
+        arguments = dict(proposal.arguments)
+        if proposal.tool == "write_file" and isinstance(arguments.get("content"), str):
+            arguments["content_length"] = len(arguments.pop("content"))
+        return arguments
 
     def resolve_for_execution(self, raw_path: str) -> Path:
         candidate, _, error = self._resolve_sandbox_path(raw_path)

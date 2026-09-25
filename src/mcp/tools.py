@@ -2,7 +2,8 @@
 from mcp.server.fastmcp import FastMCP
 from pathlib import Path
 
-from ..agent import ControlledAgentRunner, DeterministicDemoAgent
+from ..agent import ControlledAgentRunner
+from ..composition import create_controlled_agent
 from ..core.decision import DecisionEngine
 from ..jev.client import JEVClient
 from ..skills import SkillExecutor, SkillRegistry, create_default_registry
@@ -17,9 +18,7 @@ def register_tools(
 ) -> None:
     registry = registry or create_default_registry()
     executor = SkillExecutor(registry)
-    controlled_agent = controlled_agent or ControlledAgentRunner(
-        engine, Path.cwd(), DeterministicDemoAgent()
-    )
+    controlled_agent = controlled_agent or create_controlled_agent(engine)
 
     @server.tool()
     async def jev_decide(task: str, options: list[str]) -> dict:
@@ -68,8 +67,6 @@ def create_mcp_server(
 
     server = FastMCP("PermitMCP")
     engine = DecisionEngine(client or ClientFactory.from_env())
-    controlled_agent = ControlledAgentRunner(
-        engine, sandbox_root or Path.cwd(), DeterministicDemoAgent()
-    )
+    controlled_agent = create_controlled_agent(engine, sandbox_root)
     register_tools(server, engine, controlled_agent=controlled_agent)
     return server

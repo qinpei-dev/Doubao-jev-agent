@@ -21,11 +21,11 @@ FORBIDDEN ACTION  DENY   → 无 Permit → 不调用 Executor
 python -m examples.showcase
 ```
 
-Showcase 使用现有控制链和离线 JEV mock，针对临时沙箱内的真实文件运行。覆盖已有文件时，在调用方明确批准前保持原样；`../secret.txt` 不会进入 JEV 或 Executor。无需 API key。
+Showcase 使用控制场景专用的离线决策 mock，针对临时沙箱内的真实文件运行。覆盖已有文件时，在调用方明确批准前保持原样；`../secret.txt` 不会进入决策提供者或 Executor。无需 API key。
 
 ### 执行路径
 
-`Agent proposal → DeterministicPolicy → DecisionController（策略通过时调用 JEV Choice）→ ExecutionPermit → SandboxToolExecutor → Observation`
+`Agent proposal → ControlChain（确定性策略 → 可选决策提供者 → ExecutionPermit → Executor）→ Observation`
 
 策略 `DENY` 在 JEV 前阻止操作；策略 `REVIEW` 等待调用方批准；`ALLOW` 获取一次性 Permit。三种结果是本项目对 TypeSafe Choice 的应用层解释，并非 TypeSafe 独立的 Gate primitive。沙箱限制和机器可读 Trace 见[受控 Agent 说明](docs/controlled-agent.md)。
 
@@ -168,7 +168,7 @@ Executor: career_skill.execute()
 python -m examples.controlled_agent_demo
 ```
 
-确定性演示会读取真实的 `README.md`，在配置的 sandbox 内创建 `output/summary.md`，并打印结构化 Trace。生成的 `output/` 目录由 Git 忽略。默认使用本地 JEV mock 且不访问网络；添加 `--real-jev` 才会使用已配置的 `JEV_API_KEY`。再次运行且输出文件已存在时，Action 会等待审批；只有明确同意覆盖时才添加 `--approve-existing`。文件工具仍会真实执行。
+确定性演示会读取真实的 `README.md`，在配置的 sandbox 内创建 `output/summary.md`，并打印结构化 Trace。生成的 `output/` 目录由 Git 忽略。默认不配置控制决策提供者，且不访问网络；添加 `--real-jev` 才会使用已配置的 `JEV_API_KEY`。再次运行且输出文件已存在时，Action 会等待审批；只有明确同意覆盖时才添加 `--approve-existing`。文件工具仍会真实执行。
 
 ## 示例
 

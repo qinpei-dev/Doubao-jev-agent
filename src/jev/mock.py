@@ -16,6 +16,11 @@ _RULES: dict[str, tuple[tuple[str, ...], str]] = {
 
 class MockJEVClient(JEVClient):
     async def decide(self, request: DecisionRequest) -> DecisionResult:
+        if set(request.options) == {"allow", "review", "deny"}:
+            return DecisionResult(
+                decision="review", confidence=1.0,
+                reason="offline control mock requires explicit caller review",
+            )
         task = request.task.casefold()
         candidates = [
             (sum(1 for term in _RULES[o][0] if term in task), o)

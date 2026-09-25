@@ -5,7 +5,7 @@ import argparse
 import json
 from pathlib import Path
 
-from src.agent import ControlledAgentRunner, DeterministicDemoAgent
+from src.composition import create_controlled_agent
 from src.core.decision import DecisionEngine
 from src.jev.client import JEVClient
 from src.jev.mock import MockJEVClient
@@ -13,10 +13,8 @@ from src.jev.mock import MockJEVClient
 
 async def main(use_real_jev: bool = False, approve_existing: bool = False) -> None:
     root = Path(__file__).resolve().parents[1]
-    runner = ControlledAgentRunner(
-        DecisionEngine(JEVClient.from_env() if use_real_jev else MockJEVClient()),
-        sandbox_root=root,
-        planner=DeterministicDemoAgent(),
+    runner = create_controlled_agent(
+        DecisionEngine(JEVClient.from_env() if use_real_jev else MockJEVClient()), root
     )
     trace = await runner.run(
         "Read README.md, create a short summary, and save it to output/summary.md."

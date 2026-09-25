@@ -1,6 +1,7 @@
 """Offline control, permit, sandbox, approval, and Agent loop tests."""
 
 import asyncio
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -92,14 +93,16 @@ def make_runner(root, *, client=None, planner=None, minimum_confidence=0.5):
     return runner, client
 
 
-def test_action_proposal_valid_and_rejects_invalid_tool_or_arguments():
+def test_action_proposal_is_generic_but_sandbox_policy_validates_arguments(tmp_path):
     action = proposal("write_file", {"path": "output/x.txt", "content": "hello"})
     assert action.action_id
     assert action.tool == "write_file"
-    with pytest.raises(ValidationError):
-        ActionProposal(tool="shell", arguments={"cmd": "whoami"}, description="invalid tool")
-    with pytest.raises(ValidationError, match="invalid arguments"):
-        ActionProposal(tool="read_file", arguments={"path": "README.md", "mode": "rb"}, description="bad args")
+    generic = ActionProposal(tool="remote.search", arguments={"query": "permit"}, description="search")
+    assert generic.tool == "remote.search"
+    policy = DeterministicPolicy(tmp_path)
+    assert policy.check(generic).status == PolicyStatus.DENY
+    malformed = ActionProposal(tool="read_file", arguments={"path": "README.md", "mode": "rb"}, description="bad args")
+    assert policy.check(malformed).status == PolicyStatus.DENY
 
 
 def test_policy_denies_traversal_and_absolute_paths(tmp_path):
@@ -194,6 +197,14 @@ def test_action_mutated_while_waiting_for_jev_is_rejected(tmp_path):
         asyncio.run(controller.decide(action))
 
 
+def test_sandbox_write_content_is_redacted_from_provider_context(tmp_path):
+    client = ChoiceClient()
+    controller = DecisionController(DecisionEngine(client), DeterministicPolicy(tmp_path))
+    asyncio.run(controller.decide(proposal("write_file", {"path": "new.txt", "content": "secret"})))
+    assert "secret" not in client.calls[0].task
+    assert '"content_length": 6' in client.calls[0].task
+
+
 def test_low_confidence_allow_becomes_review_and_confidence_is_bounded(tmp_path):
     controller = DecisionController(
         DecisionEngine(ChoiceClient("allow", 0.2)), DeterministicPolicy(tmp_path), minimum_confidence=0.5
@@ -265,6 +276,7 @@ def test_rejected_or_missing_permit_cannot_execute(tmp_path):
         approved=False,
         approval_source="jev",
         proposal_digest=action.digest(),
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=1),
     )
     with pytest.raises(PermitError, match="not approved"):
         executor.execute(action, rejected)

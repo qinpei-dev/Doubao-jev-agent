@@ -21,11 +21,11 @@ FORBIDDEN ACTION  DENY   → no permit → executor not called
 python -m examples.showcase
 ```
 
-The showcase uses real sandbox file tools and the existing control chain with an offline JEV mock. It copies `README.md` into a disposable sandbox, checks that a reviewed file stays unchanged until explicit caller approval, and verifies that `../secret.txt` never reaches JEV or the executor. No API key is needed.
+The showcase uses real sandbox file tools and a control-specific offline decision mock. It copies `README.md` into a disposable sandbox, checks that a reviewed file stays unchanged until explicit caller approval, and verifies that `../secret.txt` never reaches the decision provider or executor. No API key is needed.
 
 ### Execution path
 
-`Agent proposal → DeterministicPolicy → DecisionController (JEV Choice when policy passes) → ExecutionPermit → SandboxToolExecutor → Observation`
+`Agent proposal → ControlChain (deterministic policy → optional decision provider → ExecutionPermit → executor) → Observation`
 
 Policy `DENY` stops before JEV. Policy `REVIEW` waits for caller approval. `ALLOW` receives a one-use permit. These outcomes are this project's application-layer interpretation of TypeSafe Choice, not a separate TypeSafe Gate primitive. See [Controlled Agent](docs/controlled-agent.md) for sandbox limits and the machine-readable trace.
 
@@ -166,7 +166,7 @@ Run the new file-execution loop from the repository root:
 python -m examples.controlled_agent_demo
 ```
 
-The deterministic demo reads the actual `README.md`, creates `output/summary.md` inside the configured sandbox, and prints a structured trace. The generated `output/` directory is ignored by Git. It uses the local JEV mock by default and stays offline; pass `--real-jev` to use the configured `JEV_API_KEY`. If you run the demo again with an existing output file, the action waits for review; pass `--approve-existing` only when you intend to overwrite it. The tool execution itself is real.
+The deterministic demo reads the actual `README.md`, creates `output/summary.md` inside the configured sandbox, and prints a structured trace. The generated `output/` directory is ignored by Git. Control runs without a decision provider by default and stays offline; pass `--real-jev` to use the configured `JEV_API_KEY`. If you run the demo again with an existing output file, the action waits for review; pass `--approve-existing` only when you intend to overwrite it. The tool execution itself is real.
 
 ## Examples
 

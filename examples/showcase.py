@@ -9,7 +9,7 @@ from src.agent import ControlledAgentRunner
 from src.control.models import ActionProposal, AgentFinish, AgentTrace, Observation
 from src.core.decision import DecisionEngine
 from src.core.models import DecisionRequest, DecisionResult
-from src.jev.mock import MockJEVClient
+from src.jev.client import JEVClient
 
 
 class OneActionPlanner:
@@ -27,25 +27,25 @@ class OneActionPlanner:
         return AgentFinish(final_output="Showcase action finished.", status=status)
 
 
-class CountingMockJEV(MockJEVClient):
+class CountingControlProvider(JEVClient):
     def __init__(self):
         self.calls = 0
 
     async def decide(self, request: DecisionRequest) -> DecisionResult:
         self.calls += 1
-        return await super().decide(request)
+        return DecisionResult(decision="allow", confidence=0.9, reason="offline control demo")
 
 
 @dataclass
 class Scenario:
     runner: ControlledAgentRunner
-    client: CountingMockJEV
+    client: CountingControlProvider
     executor_calls: list[str]
     trace: AgentTrace
 
 
 async def _run(root: Path, proposal: ActionProposal) -> Scenario:
-    client = CountingMockJEV()
+    client = CountingControlProvider()
     runner = ControlledAgentRunner(
         DecisionEngine(client), root, OneActionPlanner(proposal)
     )
